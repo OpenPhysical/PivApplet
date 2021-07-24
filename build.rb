@@ -54,15 +54,7 @@ end
 
 `rm -fr dist`
 `mkdir dist`
-build(VER, 'jc222', 'RESAaD')
 build(VER, 'jc222', 'RESAxaD')
-build(VER, 'jc222', 'REAxaD')
-build(VER, 'jc222', 'RESxLD')
 
-build(VER, 'jc304', 'EPSxLaD')
-build(VER, 'jc304', 'RSxLaD')
-build(VER, 'jc304', 'REePSAa')
-build(VER, 'jc304', 'REePSAaD')
 build(VER, 'jc304', 'REePSAxa')
 build(VER, 'jc304', 'REePSAxaD')
-build(VER, 'jc304', 'REePAxaD')
