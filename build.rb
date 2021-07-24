@@ -3,7 +3,7 @@
 require 'nokogiri'
 require 'fileutils'
 
-VER = "0.9.0"
+VER = "1.0.0"
 
 FLAGS = {
 	'R' => 'PIV_SUPPORT_RSA',
@@ -17,6 +17,14 @@ FLAGS = {
 	'a' => 'PIV_SUPPORT_AES',
 	'D' => 'PIV_SUPPORT_3DES'
 }
+
+puts "PIVApplet Build Started..."
+if (ENV['JC_SDKS'].nil?)
+	puts "ERROR: SDK path must be set"
+	exit (1)
+else
+	puts "SDK Path: " + ENV['JC_SDKS']
+end
 
 $xmlbase = Nokogiri::XML(File.open('build.xml'))
 FLAGS.each do |_,fl|
@@ -46,11 +54,6 @@ end
 
 `rm -fr dist`
 `mkdir dist`
-build(VER, 'jc221', 'RESaD')
-build(VER, 'jc221', 'RESAaD')
-build(VER, 'jc221', 'RESLaD')
-build(VER, 'jc221', 'RESLD')
-
 build(VER, 'jc222', 'RESAaD')
 build(VER, 'jc222', 'RESAxaD')
 build(VER, 'jc222', 'REAxaD')
