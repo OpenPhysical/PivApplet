@@ -1064,8 +1064,6 @@ public class PivApplet extends Applet
 			final byte idx = (byte)(SLOT_MIN_HIST +
 			    (byte)(key - MIN_HIST_SLOT));
 			slot = slots[idx];
-		} else if (key == (byte)0xF9) {
-			slot = slots[SLOT_F9];
 		} else {
 			ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
 			return;
