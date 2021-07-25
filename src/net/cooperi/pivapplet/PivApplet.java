@@ -672,12 +672,14 @@ public class PivApplet extends Applet
 		final byte key = buffer[ISO7816.OFFSET_P2];
 		final PivSlot slot;
 
+		// PIN_P2 || PUK_P2
 		if (key == (byte)0x80 || key == (byte)0x81) {
 			outgoing.reset();
 			wtlv.start(outgoing);
 			outgoingLe = apdu.setOutgoing();
 			wtlv.useApdu((short)0, outgoingLe);
 
+			// Tag 0x05, one byte, whether the PIN or PUK is default
 			wtlv.writeTagRealLen((byte)0x05, (short)1);
 			if (key == (byte)0x80 && pivPinIsDefault)
 				wtlv.writeByte((byte)1);
@@ -686,11 +688,15 @@ public class PivApplet extends Applet
 			else
 				wtlv.writeByte((byte)0);
 
-			wtlv.writeTagRealLen((byte)0x06, (short)1);
-			if (key == (byte)0x80)
+			// Tag 0x06, two bytes, [total number of retries] [remaining retries]
+			wtlv.writeTagRealLen((byte)0x06, (short)2);
+			if (key == (byte)0x80) {
 				wtlv.writeByte(pinRetries);
-			else if (key == (byte)0x81)
+				wtlv.writeByte(pivPin.getTriesRemaining());
+			} else if (key == (byte)0x81) {
 				wtlv.writeByte(pukRetries);
+				wtlv.writeByte(pukPin.getTriesRemaining());
+			}
 
 			wtlv.end();
 			sendOutgoing(apdu);
@@ -1064,8 +1070,6 @@ public class PivApplet extends Applet
 			final byte idx = (byte)(SLOT_MIN_HIST +
 			    (byte)(key - MIN_HIST_SLOT));
 			slot = slots[idx];
-		} else if (key == (byte)0xF9) {
-			slot = slots[SLOT_F9];
 		} else {
 			ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
 			return;
@@ -2775,8 +2779,13 @@ public class PivApplet extends Applet
 			file.len = (short)0;
 		}
 
+//#if PIV_SUPPORT_3DES
 		final DESKey dk = (DESKey)slots[SLOT_9B].sym;
 		dk.setKey(DEFAULT_ADMIN_KEY, (short)0);
+//#else
+		final AESKey ak = (AESKey)slots[SLOT_9B].sym;
+		ak.setKey(DEFAULT_ADMIN_KEY, (short)0);
+//#endif
 
 		pinRetries = (byte)5;
 		pivPin = new OwnerPIN(pinRetries, (byte)8);
