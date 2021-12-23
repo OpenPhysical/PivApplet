@@ -1,0 +1,8 @@
+<ivy-module version="2.0">
+    <info organisation="net.cooperi" module="pivapplet"/>
+    <dependencies>
+        <dependency org="com.klinec" name="jcardsim" rev="3.0.5.11"/>
+        <dependency org="com.github.martinpaljak" name="ant-javacard" rev="20.03.25"/>
+        <dependency org="org.junit.jupiter" name="junit-jupiter-api" rev="5.8.2"/>
+    </dependencies>
+</ivy-module>
