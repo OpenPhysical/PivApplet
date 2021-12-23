@@ -4,5 +4,6 @@
         <dependency org="com.klinec" name="jcardsim" rev="3.0.5.11"/>
         <dependency org="com.github.martinpaljak" name="ant-javacard" rev="20.03.25"/>
         <dependency org="org.junit.jupiter" name="junit-jupiter-api" rev="5.8.2"/>
+        <dependency org="com.payneteasy" name="ber-tlv" rev="1.0-11"/>
     </dependencies>
 </ivy-module>
