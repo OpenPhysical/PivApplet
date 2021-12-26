@@ -15,6 +15,7 @@ import javax.smartcardio.CommandAPDU;
 import javax.smartcardio.ResponseAPDU;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -27,6 +28,13 @@ class PivAppletTest {
     void setUp() {
         // Re-initialize the simulator for each test
         simulator = new CardSimulator();
+    }
+
+    @Test
+    void TestInstall() {
+        byte[] installParams = new byte[512];
+        Arrays.fill(installParams, (byte) 0xFF);
+        simulator.installApplet(appletAID, PivApplet.class, installParams, (short) 0, (byte) installParams.length);
     }
 
     @Test

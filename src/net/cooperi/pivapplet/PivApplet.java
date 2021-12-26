@@ -267,7 +267,7 @@ public class PivApplet extends Applet
 	public static void
 	install(byte[] info, short off, byte len)
 	{
-		final PivApplet applet = new PivApplet();
+		final PivApplet applet = new PivApplet(info, off, len);
 		applet.register();
 	}
 
@@ -278,8 +278,15 @@ public class PivApplet extends Applet
 //#endif
 
 	protected
-	PivApplet()
+	PivApplet(byte[] info, short off, byte len)
 	{
+		/* Per the GlobalPlatform Specification (currently 2.3.1), the OPEN is responsible for ensuring the following
+		   parameters are provided to the applet install method:
+           - Length of the instance AID, followed by instance AID
+           - Length of the privileges, followed by the privileges
+           - Length of the application specific parameters, followed by the application specific parameters
+		 */
+
 		randData = RandomData.getInstance(RandomData.ALG_SECURE_RANDOM);
 //#if PIV_SUPPORT_3DES
 		tripleDes = Cipher.getInstance(Cipher.ALG_DES_CBC_NOPAD, false);
