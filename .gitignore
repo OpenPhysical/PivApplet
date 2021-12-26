@@ -7,3 +7,4 @@
 /test/*.ebox
 /lib/
 *.iml
+.DS_Store

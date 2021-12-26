@@ -404,7 +404,17 @@ public class PivApplet extends Applet
 		serial[0] |= (byte)0x80;
 
 		certSerial = new byte[16];
+
+		/* Per Personal Identity Verification (PIV) Interoperability For Issuers, v2.0.1:
+		 * NFIs of PIV-Interoperable credentials are required to generate and issue FASC-N
+		 * values which populate the value “9” for the Agency Code, System Code, and Credential Number.
+		 * This represents the first 14 digits of the FASC-N.
+		 */
 		fascn = new byte[25];
+
+		// Generate a random FASC-N, with the first 14 digits being 9 and the last 11 digits being random
+		// @todo Proper FASC-N generation for CHUID
+
 		expiry = new byte[] { '2', '0', '5', '0', '0', '1', '0', '1' };
 
 		slots = new PivSlot[MAX_SLOTS];
