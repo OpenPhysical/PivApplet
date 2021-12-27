@@ -409,11 +409,26 @@ public class PivApplet extends Applet
 		 * NFIs of PIV-Interoperable credentials are required to generate and issue FASC-N
 		 * values which populate the value “9” for the Agency Code, System Code, and Credential Number.
 		 * This represents the first 14 digits of the FASC-N.
+		 *
+		 * When the first 14 digits are 9, uniqueness of the FASC-N is not guaranteed, and the GUID is used instead
+		 * to provide uniqueness.  Many of the fields have semantic value, which further reduces the amount of entropy
+		 * in the FASC-N for non-federal issuers.  Rather than attempt to construct a globally unique ID in essentially
+		 * 10 decimal digits, a non FASC-N IS hard-coded to provide the mandatory elements to instruct readers to switch
+		 * to GUID use.
+		 *
+		 * Data encoded in this FASC-N:
+		 * Agency Name, System Code, and Credential Number are all 9s (non-federal)
+		 * Credential Series: 0 (no major system changes)
+		 * Individual Credential Issue: 1 (always, as recommended in PACS implementation guidance)
+		 * Person Identifier: 00000 00000
+		 * Organizational Category: 3 (Commercial Enterprise)
+		 * Organizational Identifier: 0000
+		 * Person Association Category: 6 (Affiliated with Organization)
 		 */
-		fascn = new byte[25];
-
-		// Generate a random FASC-N, with the first 14 digits being 9 and the last 11 digits being random
-		// @todo Proper FASC-N generation for CHUID
+		fascn = new byte[]{(byte) 0xD4, (byte) 0xE7, (byte) 0x39, (byte) 0xDA, (byte) 0x73, (byte) 0x9C, (byte) 0xED,
+				(byte) 0x39, (byte) 0xCE, (byte) 0x73, (byte) 0x9D, (byte) 0x83, (byte) 0x68, (byte) 0x58, (byte) 0x21,
+				(byte) 0x08, (byte) 0x42, (byte) 0x10, (byte) 0x84, (byte) 0x21, (byte) 0xC8, (byte) 0x42, (byte) 0x10,
+				(byte) 0xB7, (byte) 0xF6};
 
 		expiry = new byte[] { '2', '0', '5', '0', '0', '1', '0', '1' };
 
