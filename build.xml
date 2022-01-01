@@ -80,14 +80,13 @@
 
   <target name="dist" depends="preprocess,resolve" description="generate the distribution">
     <tstamp/>
-    <ant dir="ext/ant"/>
     <!-- Create the distribution directory -->
-    <taskdef name="javacard" classname="pro.javacard.ant.JavaCard" classpath="ext/ant/ant-javacard.jar"/>
+    <taskdef name="javacard" classname="pro.javacard.ant.JavaCard" classpath="lib/ant-javacard-21.12.31.jar;lib/capfile-20.02.19.jar"/>
     <javacard>
-      <cap aid="a0:00:00:03:08:00:00:10" output="bin/PivApplet-222.cap" sources="src-gen" classes="bin" jckit="ext/oracle_javacard_sdks/jc222_kit/" version="1.0">
+      <cap aid="a0:00:00:03:08:00:00:10" output="bin/PivApplet-222.cap" sources="src-gen" excludes="test/*" classes="bin" jckit="ext/oracle_javacard_sdks/jc222_kit/" version="1.0">
         <applet class="net.cooperi.pivapplet.PivApplet" aid="a0:00:00:03:08:00:00:10:00:01:00"/>
       </cap>
-      <cap aid="a0:00:00:03:08:00:00:10" output="bin/PivApplet-304.cap" sources="src-gen" classes="bin" jckit="ext/oracle_javacard_sdks/jc304_kit/" version="1.0">
+      <cap aid="a0:00:00:03:08:00:00:10" output="bin/PivApplet-304.cap" sources="src-gen" excludes="test/*" classes="bin" jckit="ext/oracle_javacard_sdks/jc304_kit/" version="1.0">
         <applet class="net.cooperi.pivapplet.PivApplet" aid="a0:00:00:03:08:00:00:10:00:01:00"/>
       </cap>
     </javacard>
