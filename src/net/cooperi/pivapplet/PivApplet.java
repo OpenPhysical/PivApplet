@@ -3272,6 +3272,7 @@ public class PivApplet extends Applet
 		outgoing.read(f.data, (short)0, len);
 	}
 
+//#if YKPIV_ATTESTATION
 	private static final byte ASN1_SEQ = (byte)0x30;
 	private static final byte ASN1_SET = (byte)0x31;
 	private static final byte ASN1_INTEGER = (byte)0x02;

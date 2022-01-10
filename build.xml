@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project name="JavaCard PIV applet" xmlns:ivy="antlib:org.apache.ivy.ant" default="dist" basedir=".">
-  <description>Builds the project. </description>
+<project name="JavaCard PIV applet" xmlns:ivy="antlib:org.apache.ivy.ant" default="dist" basedir="."
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="antlib:org.apache.ivy.ant https://ant.apache.org/ivy/schemas/ivy.xsd">
+  <description>Builds the project.</description>
 
   <!-- feature controls -->
 
@@ -68,7 +69,7 @@
   <property name="APPLET_LOW_TRANSIENT" value="false"/>
 
   <target name="resolve" description="retrieve dependencies with Ivy">
-    <ivy:retrieve/>
+    <ivy:retrieve type="jar"/>
   </target>
 
   <target name="preprocess" description="proprocess java source">
@@ -81,12 +82,15 @@
   <target name="dist" depends="preprocess,resolve" description="generate the distribution">
     <tstamp/>
     <!-- Create the distribution directory -->
-    <taskdef name="javacard" classname="pro.javacard.ant.JavaCard" classpath="lib/ant-javacard-21.12.31.jar;lib/capfile-20.02.19.jar"/>
+    <taskdef name="javacard" classname="pro.javacard.ant.JavaCard"
+             classpath="lib/ant-javacard-21.12.31.jar;lib/capfile-21.04.05.jar"/>
     <javacard>
-      <cap aid="a0:00:00:03:08:00:00:10" output="bin/PivApplet-222.cap" sources="src-gen" excludes="test/*" classes="bin" jckit="ext/oracle_javacard_sdks/jc222_kit/" version="1.0">
+      <cap aid="a0:00:00:03:08:00:00:10" output="bin/PivApplet-222.cap" sources="src-gen" excludes="test/*"
+           classes="bin" jckit="ext/oracle_javacard_sdks/jc305u3_kit/" targetsdk="ext/oracle_javacard_sdks/jc222_kit/" version="1.0">
         <applet class="net.cooperi.pivapplet.PivApplet" aid="a0:00:00:03:08:00:00:10:00:01:00"/>
       </cap>
-      <cap aid="a0:00:00:03:08:00:00:10" output="bin/PivApplet-304.cap" sources="src-gen" excludes="test/*" classes="bin" jckit="ext/oracle_javacard_sdks/jc304_kit/" version="1.0">
+      <cap aid="a0:00:00:03:08:00:00:10" output="bin/PivApplet-304.cap" sources="src-gen" excludes="test/*"
+           classes="bin" jckit="ext/oracle_javacard_sdks/jc305u3_kit/" targetsdk="ext/oracle_javacard_sdks/jc304_kit/" version="1.0">
         <applet class="net.cooperi.pivapplet.PivApplet" aid="a0:00:00:03:08:00:00:10:00:01:00"/>
       </cap>
     </javacard>
@@ -96,6 +100,27 @@
     <!-- Delete the built applet -->
     <delete dir="bin"/>
     <delete dir="src-gen"/>
+  </target>
+
+  <target name="compile-test" depends="preprocess">
+    <mkdir dir="bin/"/>
+    <javac includeantruntime="false" destdir="bin">
+      <src path="src-gen"/>
+      <!-- our tests only need JUnit Jupiter engine
+      libraries in our compile classpath for the tests -->
+      <classpath location="lib/jcardsim-3.0.5.11.jar"/>
+      <classpath location="lib/ber-tlv-1.0-11.jar"/>
+      <classpath location="lib/junit-jupiter-api-5.8.2.jar"/>
+    </javac>
+  </target>
+
+  <target name="test" depends="compile-test">
+    <taskdef name="junitlauncher" classpath="lib/ant-junitlauncher.jar"/>
+    <junitlauncher>
+      <testclasses>
+        <fileset dir="bin"/>
+      </testclasses>
+    </junitlauncher>
   </target>
 
 </project>
