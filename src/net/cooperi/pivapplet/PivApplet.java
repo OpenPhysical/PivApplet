@@ -802,9 +802,9 @@ public class PivApplet extends Applet
 
 		wtlv.writeTagRealLen((byte)0x03, (short)1);
 		if (slot.imported)
-			wtlv.writeByte((byte)1);
+			wtlv.writeByte((byte)2);
 		else
-			wtlv.writeByte((byte)0);
+			wtlv.writeByte((byte)1);
 
 		if (slot.asym != null) {
 			short len;
@@ -1172,15 +1172,7 @@ public class PivApplet extends Applet
 		}
 
 		// Set the default PIN policy by slot, in case the tag was not provided
-		if (idx == SLOT_9B) {
-			slot.pinPolicy = PivSlot.P_DEFAULT;
-		} else if (idx == SLOT_9C) {
-			slot.pinPolicy = PivSlot.P_ALWAYS;
-		} else if (idx == SLOT_9E) {
-			slot.pinPolicy = PivSlot.P_NEVER;
-		} else {
-			slot.pinPolicy = PivSlot.P_ONCE;
-		}
+		setDefaultPinPolicy(slot, idx);
 
 		while (!tlv.atEnd()) {
 			tag = tlv.readTag();
@@ -1413,11 +1405,12 @@ public class PivApplet extends Applet
 			return;
 		}
 
+		final byte idx;
 		if (key >= (byte)0x9A && key <= (byte)0x9E) {
-			final byte idx = (byte)(key - (byte)0x9A);
+			idx = (byte)(key - (byte)0x9A);
 			slot = slots[idx];
 		} else if (key >= MIN_HIST_SLOT && key <= MAX_HIST_SLOT) {
-			final byte idx = (byte)(SLOT_MIN_HIST +
+			idx = (byte)(SLOT_MIN_HIST +
 			    (byte)(key - MIN_HIST_SLOT));
 			slot = slots[idx];
 		} else {
@@ -1435,6 +1428,9 @@ public class PivApplet extends Applet
 			return;
 
 		tlv.start(input);
+
+		// Set the default PIN policy by slot, in case the tag was not provided
+		setDefaultPinPolicy(slot, idx);
 
 		switch (alg) {
 //#if PIV_SUPPORT_RSA
@@ -1690,6 +1686,20 @@ public class PivApplet extends Applet
 			slot.asym.getPrivate().clearKey();
 			ISOException.throwIt(ISO7816.SW_WRONG_DATA);
 			return;
+		}
+	}
+
+	private void
+	setDefaultPinPolicy(PivSlot slot, byte idx)
+	{
+		if (idx == SLOT_9B) {
+			slot.pinPolicy = PivSlot.P_DEFAULT;
+		} else if (idx == SLOT_9C) {
+			slot.pinPolicy = PivSlot.P_ALWAYS;
+		} else if (idx == SLOT_9E) {
+			slot.pinPolicy = PivSlot.P_NEVER;
+		} else {
+			slot.pinPolicy = PivSlot.P_ONCE;
 		}
 	}
 

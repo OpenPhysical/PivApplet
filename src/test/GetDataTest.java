@@ -111,6 +111,8 @@ class GetDataTest {
         final byte[] alwaysTouchPolicy = new byte[]{(byte) 0x03, (byte) 0x01};
         final byte[] neverTouchPolicy = new byte[]{(byte)0x01, (byte)0x01};
         final byte[] oneTimeTouchPolicy = new byte[]{(byte)0x02, (byte)0x01};
+        final int DEFAULT_PIN_RETRIES = 0x05;
+        final int DEFAULT_PUK_RETRIES = 0x03;
 
         // Go through all the default empty slots, and fill them.
         for (byte slot : missingSlots) {
@@ -143,8 +145,8 @@ class GetDataTest {
                 final BerTlv searchValue = parsed.find(searchTag);
                 assertNotNull(searchValue, String.format("Missing tag %02X in getMetaData response for slot %02X", tag, slot));
 
-                // Ensure the algorithm tag is set properly if present
                 if (tag == 0x01) {
+                    // Ensure the algorithm tag is set properly if present
                     // For PIN and PUK, this should be 0xFF
                     if ((byte) 0x80 == slot || (byte) 0x81 == slot) {
                         assertEquals(searchValue.getIntValue(), 0xFF);
@@ -173,11 +175,45 @@ class GetDataTest {
                         // Everything else defaults to "PIN once"
                         assertArrayEquals(oneTimeTouchPolicy, policyBytes, String.format("PIN policy metadata incorrect for slot %02X.  Expected: 0x0201, Actual: %02X%02X", slot, policyBytes[0], policyBytes[1]));
                     }
+                } else if (tag == 0x03) {
+                    // Generated vs imported flag.
+                    // As every single key is a result of a generate option, they should all have the value 0x01 (generated)
+                    assertEquals(0x01, searchValue.getIntValue(), String.format("Generated key in slot %02X does not have the generated flag set (value: %02X).", slot, searchValue.getIntValue()));
+                } else if (tag == 0x04) {
+                    // Public key
+                    byte[] publicKeyValue = searchValue.getBytesValue();
+
+                    // Sanity checking
+                    // Format: 81 || length || modulus || 82 || length || public exponent
+                    assertEquals((byte)0x81, publicKeyValue[0]);
+                    int modulusLength = Byte.toUnsignedInt(publicKeyValue[1]);
+                    assertNotEquals(0, modulusLength, "Generated RSA modulus must be non-zero.");
+
+                    // Check for the public exponent tag
+                    assertEquals((byte)0x82, publicKeyValue[modulusLength + 2]);
+                    int exponentLength = Byte.toUnsignedInt(publicKeyValue[modulusLength + 3]);
+                    assertNotEquals(0, exponentLength, "Generated RSA exponent must be non-zero.");
+                    int expectedLength = modulusLength + exponentLength + 4;
+                    assertEquals(publicKeyValue.length,expectedLength, "GenAsym() returns invalid public key data.");
+                } else if (tag == 0x05) {
+                    // Default PIN value
+                    // All PINs should be default PIN values, so ensure that the metadata returns such
+                    assertEquals(0x01, searchValue.getIntValue(), String.format("Default PIN/PUK in slot %02X is reporting as non-default.", slot));
+                } else if (tag == 0x06) {
+                    // Retry data
+                    if (slot == (byte)0x80) {
+                        // PIN
+                        assertEquals(DEFAULT_PIN_RETRIES, searchValue.getBytesValue()[0], String.format("PIN has unexpected retries (expected: %02x, actual: %02x",DEFAULT_PIN_RETRIES, searchValue.getBytesValue()[0]));
+                        assertEquals(DEFAULT_PIN_RETRIES, searchValue.getBytesValue()[1], String.format("PIN has unexpected remaining (expected: %02x, actual: %02x",DEFAULT_PIN_RETRIES, searchValue.getBytesValue()[1]));
+                        assertEquals(2, searchValue.getBytesValue().length, "PIN retry metadata has unexpected length.");
+                    } else if (slot == (byte)0x81) {
+                        // PUK
+                        assertEquals(DEFAULT_PUK_RETRIES, searchValue.getBytesValue()[0], String.format("PUK has unexpected retries (expected: %02x, actual: %02x",DEFAULT_PUK_RETRIES, searchValue.getBytesValue()[0]));
+                        assertEquals(DEFAULT_PUK_RETRIES, searchValue.getBytesValue()[1], String.format("PUK has unexpected remaining (expected: %02x, actual: %02x",DEFAULT_PUK_RETRIES, searchValue.getBytesValue()[1]));
+                        assertEquals(2, searchValue.getBytesValue().length, "PUK retry metadata has unexpected length.");
+                    }
                 }
-
             }
-
-            assertEquals(1, 1);
         }
     }
 
