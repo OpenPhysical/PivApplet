@@ -110,6 +110,7 @@ class GetDataTest {
         final byte[] defaultTouchPolicy = new byte[]{(byte) 0x00, (byte) 0x01};
         final byte[] alwaysTouchPolicy = new byte[]{(byte) 0x03, (byte) 0x01};
         final byte[] neverTouchPolicy = new byte[]{(byte)0x01, (byte)0x01};
+        final byte[] oneTimeTouchPolicy = new byte[]{(byte)0x02, (byte)0x01};
 
         // Go through all the default empty slots, and fill them.
         for (byte slot : missingSlots) {
@@ -160,11 +161,17 @@ class GetDataTest {
                     // The goal of this metadata is largely to support attestation and policy checks.  The default for yubikeys is PIN once, touch never.
                     // Any policy other than that should be made explicit to ensure that attestation certs aren't misleading
                     if ((byte)0x9C == slot) {
-                        assertArrayEquals(alwaysTouchPolicy, policyBytes, String.format("PIN policy metadata incorrect for slot %02X.  Expected: 0x0001, Actual: %02X%02X", slot, policyBytes[0], policyBytes[1]));
+                        // The signature slot defaults to always require
+                        assertArrayEquals(alwaysTouchPolicy, policyBytes, String.format("PIN policy metadata incorrect for slot %02X.  Expected: 0x0301, Actual: %02X%02X", slot, policyBytes[0], policyBytes[1]));
                     } else if ((byte)0x9e == slot) {
-                        assertArrayEquals(neverTouchPolicy, policyBytes, String.format("PIN policy metadata incorrect for slot %02X.  Expected: 0x0001, Actual: %02X%02X", slot, policyBytes[0], policyBytes[1]));
-                    } else {
+                        // The card authentication key slot defaults to never require
+                        assertArrayEquals(neverTouchPolicy, policyBytes, String.format("PIN policy metadata incorrect for slot %02X.  Expected: 0x0101, Actual: %02X%02X", slot, policyBytes[0], policyBytes[1]));
+                    } else if ((byte)0x9b == slot) {
+                        // The management key defaults to "default" for the PIN requirement, but that actually means "never" (consistent with PIV reqs)
                         assertArrayEquals(defaultTouchPolicy, policyBytes, String.format("PIN policy metadata incorrect for slot %02X.  Expected: 0x0001, Actual: %02X%02X", slot, policyBytes[0], policyBytes[1]));
+                    } else {
+                        // Everything else defaults to "PIN once"
+                        assertArrayEquals(oneTimeTouchPolicy, policyBytes, String.format("PIN policy metadata incorrect for slot %02X.  Expected: 0x0201, Actual: %02X%02X", slot, policyBytes[0], policyBytes[1]));
                     }
                 }
 

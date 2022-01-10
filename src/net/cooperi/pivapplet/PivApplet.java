@@ -1112,6 +1112,7 @@ public class PivApplet extends Applet
 		short lc, len, cLen;
 		byte tag, alg = (byte)0xFF;
 		final byte key;
+		final byte idx;
 		final PivSlot slot;
 
 		if (buffer[ISO7816.OFFSET_P1] != (byte)0x00) {
@@ -1122,13 +1123,14 @@ public class PivApplet extends Applet
 		key = buffer[ISO7816.OFFSET_P2];
 
 		if (key >= (byte)0x9A && key <= (byte)0x9E) {
-			final byte idx = (byte)(key - (byte)0x9A);
+			idx = (byte)(key - (byte)0x9A);
 			slot = slots[idx];
 		} else if (key >= MIN_HIST_SLOT && key <= MAX_HIST_SLOT) {
-			final byte idx = (byte)(SLOT_MIN_HIST +
+			idx = (byte)(SLOT_MIN_HIST +
 			    (byte)(key - MIN_HIST_SLOT));
 			slot = slots[idx];
 		} else if (key == (byte)0xF9) {
+			idx = SLOT_F9;
 			slot = slots[SLOT_F9];
 		} else {
 			ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
@@ -1167,6 +1169,17 @@ public class PivApplet extends Applet
 		if (tlv.readTag() != (byte)0xAC) {
 			ISOException.throwIt(ISO7816.SW_WRONG_DATA);
 			return;
+		}
+
+		// Set the default PIN policy by slot, in case the tag was not provided
+		if (idx == SLOT_9B) {
+			slot.pinPolicy = PivSlot.P_DEFAULT;
+		} else if (idx == SLOT_9C) {
+			slot.pinPolicy = PivSlot.P_ALWAYS;
+		} else if (idx == SLOT_9E) {
+			slot.pinPolicy = PivSlot.P_NEVER;
+		} else {
+			slot.pinPolicy = PivSlot.P_ONCE;
 		}
 
 		while (!tlv.atEnd()) {
