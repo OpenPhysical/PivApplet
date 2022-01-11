@@ -416,8 +416,8 @@ public class PivApplet extends Applet
 		 * When the first 14 digits are 9, uniqueness of the FASC-N is not guaranteed, and the GUID is used instead
 		 * to provide uniqueness.  Many of the fields have semantic value, which further reduces the amount of entropy
 		 * in the FASC-N for non-federal issuers.  Rather than attempt to construct a globally unique ID in essentially
-		 * 10 decimal digits, a non FASC-N IS hard-coded to provide the mandatory elements to instruct readers to switch
-		 * to GUID use.
+		 * 10 decimal digits, a non-federal FASC-N IS hard-coded to provide the mandatory elements to instruct readers
+		 * to switch to GUID use.
 		 *
 		 * Data encoded in this FASC-N:
 		 * Agency Name, System Code, and Credential Number are all 9s (non-federal)

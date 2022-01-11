@@ -21,6 +21,11 @@ import static org.junit.jupiter.api.Assertions.*;
 public class PinManagementTest {
     CardSimulator simulator;
     AID appletAID = AIDUtil.create("A000000308000010000100");
+    ResponseAPDU response;
+
+    // For TLV parsing
+    BerTlvParser parser = new BerTlvParser();
+    BerTlvs parsed;
 
     // Yubikey extension to get metadata for a slot
     final byte INS_GET_METADATA = (byte) 0xF7;
@@ -28,6 +33,7 @@ public class PinManagementTest {
     // Standard PIV verify command
     final byte INS_VERIFY = (byte)0x20; // Verifies PIN
     final byte INS_RESET_RETRY = (byte)0x2C; // Resets PIN retries
+    final byte INS_CHANGE_REFERENCE_DATA = (byte)0x24;  // Sets PIN/PUK
 
     // Which slot stores the PIN
     final byte SLOT_PIN = (byte) 0x80;
@@ -44,10 +50,15 @@ public class PinManagementTest {
 
     final byte APPLET_PIN_PADDING = (byte)0xFF;
 
-    // PIN to change to
-    final byte[] TEST_PIN = new byte[] {'8', '7', '6', '5', '4', '3', '2', '1'};
     // Default PIN
     final byte[] DEFAULT_PIN = new byte[] {'1', '2', '3', '4', '5', '6', APPLET_PIN_PADDING, APPLET_PIN_PADDING};
+    // PIN to change to
+    final byte[] TEST_PIN = new byte[] {'8', '7', '6', '5', '4', '3', '2', '1'};
+    // Default PUK
+    final byte[] DEFAULT_PUK = new byte[] {'1', '2', '3', '4', '5', '6', '7', '8'};
+    // PIN to change to
+    final byte[] TEST_PUK = new byte[] {'8', '7', '6', '5', '4', '3', '2', '1'};
+
     // Invalid zero-length PIN with padding
     final byte[] BAD_PIN = new byte[] {(byte)0xFF, (byte)0xFF, (byte)0xFF, (byte)0xFF, (byte)0xFF, (byte)0xFF, (byte)0xFF, (byte)0xFF};
 
@@ -67,13 +78,8 @@ public class PinManagementTest {
 
     @Test
     void TestVerifyAndSetPIN() throws IOException {
-        final byte INS_CHANGE_REFERENCE_DATA = (byte)0x24;  // Sets PIN
-        ResponseAPDU response;
-        BerTlvParser parser = new BerTlvParser();
-        BerTlvs parsed;
-
         // Ensure the PIN metadata shows the PIN is default
-        final CommandAPDU getPINMetadataCommand = new CommandAPDU(0x00, INS_GET_METADATA, 0x00, this.SLOT_PIN);
+        final CommandAPDU getPINMetadataCommand = new CommandAPDU(0x00, INS_GET_METADATA, 0x00, SLOT_PIN);
         response = simulator.transmitCommand(getPINMetadataCommand);
         assertEquals(SW_SUCCESS, response.getSW(), "Unable to get metadata for PIN.");
         parsed = parser.parse(response.getData());
@@ -119,6 +125,60 @@ public class PinManagementTest {
         assertEquals(SW_SUCCESS, response.getSW(), "Unable to verify changed PIN.");
         response = simulator.transmitCommand(verifyDefaultPINCommand);
         assertEquals(counter, response.getSW2(), "Failed to reset retries left counter on correct PIN.");
+    }
+
+    @Test
+    void TestVerifyAndSetPUK() throws IOException {
+        ResponseAPDU response;
+        BerTlvParser parser = new BerTlvParser();
+        BerTlvs parsed;
+
+        // Ensure the PUK metadata shows the PUK is default
+        final CommandAPDU getPUKMetadataCommand = new CommandAPDU(0x00, INS_GET_METADATA, 0x00, SLOT_PUK);
+        response = simulator.transmitCommand(getPUKMetadataCommand);
+        assertEquals(SW_SUCCESS, response.getSW(), "Unable to get metadata for PUK.");
+        parsed = parser.parse(response.getData());
+        BerTlv isDefaultTag = parsed.find(TAG_DEFAULT_VALUE);
+        assertNotNull(isDefaultTag, "Default status not present in PUK metadata.");
+        assertEquals(0x01, isDefaultTag.getIntValue(), "Default PUK is not reported as default.");
+
+        // Verify the default PUK
+        final CommandAPDU verifyDefaultPUKCommand = new CommandAPDU(0x00, INS_VERIFY, 0x00, SLOT_PUK, DEFAULT_PUK);
+        response = simulator.transmitCommand(verifyDefaultPUKCommand);
+        assertEquals(SW_SUCCESS, response.getSW(), "Unable to verify default PUK.");
+
+        // Change the PUK
+        // Format: Current PUK and new PUK
+        ByteArrayOutputStream changeDefaultPUKBytes = new ByteArrayOutputStream();
+        changeDefaultPUKBytes.write(DEFAULT_PUK);
+        changeDefaultPUKBytes.write(TEST_PIN);
+
+        // Ensure that the PIN change operation return success
+        CommandAPDU changeDefaultPUKCommand = new CommandAPDU(0x00, INS_CHANGE_REFERENCE_DATA, 0x00, SLOT_PUK, changeDefaultPUKBytes.toByteArray());
+        response = simulator.transmitCommand(changeDefaultPUKCommand);
+        assertEquals(SW_SUCCESS, response.getSW(), "Unable to change default PUK.");
+
+        // Ensure the PUK metadata shows the PUK is no longer default
+        response = simulator.transmitCommand(getPUKMetadataCommand);
+        assertEquals(SW_SUCCESS, response.getSW(), "Unable to get metadata for PUK.");
+        parsed = parser.parse(response.getData());
+        isDefaultTag = parsed.find(TAG_DEFAULT_VALUE);
+        assertNotNull(isDefaultTag, "Default status not present in PUK metadata.");
+        assertEquals(0x00, isDefaultTag.getIntValue(), "Non-default PUK is still reported as default.");
+
+        // Ensure that the default PUK no longer works, and that the counter decrements
+        response = simulator.transmitCommand(verifyDefaultPUKCommand);
+        int counter = response.getSW2();
+        assertEquals(SW1_INCORRECT_PIN, response.getSW1(), "PUK was not changed, but command returned success.");
+        response = simulator.transmitCommand(verifyDefaultPUKCommand);
+        assertEquals(counter - 1, response.getSW2(), "Failed to decrement retries left counter on wrong PUK.");
+
+        // Ensure that the new PUK works, and resets the counter
+        CommandAPDU verifyNewPUKCommand = new CommandAPDU(0x00, INS_VERIFY, 0x00, SLOT_PUK, TEST_PUK);
+        response = simulator.transmitCommand(verifyNewPUKCommand);
+        assertEquals(SW_SUCCESS, response.getSW(), "Unable to verify changed PUK.");
+        response = simulator.transmitCommand(verifyDefaultPUKCommand);
+        assertEquals(counter, response.getSW2(), "Failed to reset retries left counter on correct PUK.");
     }
 
     @Test
