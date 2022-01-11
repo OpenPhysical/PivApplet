@@ -21,20 +21,44 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 class PivAppletTest {
+    // JCardSim instance and APDU responses
     CardSimulator simulator;
-    AID appletAID = AIDUtil.create("A000000308000010000100");
+    ResponseAPDU response;
+
+    // PivApplet AID (for use with the simulator)
+    final AID appletAID = AIDUtil.create("A000000308000010000100");
+
+    // Returned upon command success
+    final int SW_SUCCESS = 0x9000;
+
+    // Gets the serial number for PivApplet
+    final byte INS_GET_SERIAL = (byte)0xF8;
+    final CommandAPDU getSerialCommand = new CommandAPDU(0x00, INS_GET_SERIAL, 0x00, 0x00);
+
+    // PIVApplet Tags
+    final byte TAG_INSTALL_PARAMS = (byte)0x80;
+    final byte TAG_SERIAL_NUMBER = (byte)0xFD;
+    final byte LENGTH_SERIAL_NUMBER_TAG = (byte)0x04;
+
+    // How long a serial number is (in bytes)
+    final int SERIAL_LENGTH = 0x04;
+
+    final short OFFSET_NONE = 0x00;
+
+    // Serial numbers for testing
+    final byte[] EMPTY_SERIAL = new byte[]{(byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00};
+    final byte[] TEST_SERIAL = new byte[]{(byte)0xFE, (byte)0xDC, (byte)0xBA, (byte)0x98};
 
     @BeforeEach
     void setUp() {
-        // Re-initialize the simulator for each test
+        // Ensure that random is actually random
+        System.setProperty("com.licel.jcardsim.randomdata.secure", "1");
         simulator = new CardSimulator();
     }
 
     @Test
     void TestInstall() {
-        byte[] installParams = new byte[512];
-        Arrays.fill(installParams, (byte) 0xFF);
-        simulator.installApplet(appletAID, PivApplet.class, installParams, (short) 0, (byte) installParams.length);
+        simulator.installApplet(appletAID, PivApplet.class);
     }
 
     @Test
@@ -93,5 +117,39 @@ class PivAppletTest {
         // Supported Algorithms
         List<BerTlv> supportedAlgorithms = template.findAll(new BerTag(0xAC));
         assertTrue(supportedAlgorithms.size() > 0, "Supported algorithms not present.");
+    }
+
+    @Test
+    void TestSerialNumber() {
+        // Install the applet once and store the serial number for comparison
+        simulator.installApplet(appletAID, PivApplet.class);
+        simulator.selectApplet(appletAID);
+
+        response = simulator.transmitCommand(getSerialCommand);
+        byte[] firstSerial = response.getData();
+        assertEquals(SW_SUCCESS, response.getSW(), "GET_SERIAL instruction does not return SW 9000.");
+        assertEquals(SERIAL_LENGTH, response.getData().length, "GET_SERIAL instruction returns incorrect length serial number.");
+        assertFalse(Arrays.equals(EMPTY_SERIAL, firstSerial), "GET_SERIAL instruction returns an all-zero serial number.");
+
+        // Install the applet again, and verify the serial number has changed
+        simulator.resetRuntime();
+        simulator.installApplet(appletAID, PivApplet.class);
+        simulator.selectApplet(appletAID);
+        response = simulator.transmitCommand(getSerialCommand);
+        byte[] secondSerial = response.getData();
+        assertEquals(SW_SUCCESS, response.getSW(), "GET_SERIAL instruction does not return SW 9000 on second installation.");
+        assertEquals(SERIAL_LENGTH, response.getData().length, "GET_SERIAL instruction returns incorrect length serial number on second installation.");
+        assertFalse(Arrays.equals(secondSerial, firstSerial), "GET_SERIAL instruction returns duplicate serial numbers.");
+
+        // Test specifying the serial number as an installation parameter
+        byte[] installParams = new byte[] {(byte)0x00, (byte)0x00, LENGTH_SERIAL_NUMBER_TAG + 4, TAG_INSTALL_PARAMS,
+                LENGTH_SERIAL_NUMBER_TAG + 2, TAG_SERIAL_NUMBER, LENGTH_SERIAL_NUMBER_TAG, (byte)0xFE, (byte)0xDC,
+                (byte)0xBA, (byte)0x98};
+        simulator.resetRuntime();
+        simulator.installApplet(appletAID, PivApplet.class, installParams, OFFSET_NONE, (byte)installParams.length);
+        simulator.selectApplet(appletAID);
+        response = simulator.transmitCommand(getSerialCommand);
+        byte[] customSerial = response.getData();
+        assertArrayEquals(TEST_SERIAL, customSerial, "Applet serial number does not match serial number contained in install parameters.");
     }
 }
