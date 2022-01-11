@@ -2754,8 +2754,9 @@ public class PivApplet extends Applet
 			return;
 		}
 
-		if (!pukPin.isValidated() &&
-		    !pukPin.check(buffer, pukOff, (byte)8)) {
+		// Always check the PUK value, and if the PUK is wrong, reset the validated flag.
+		if (!pukPin.check(buffer, pukOff, (byte)8)) {
+			pukPin.reset();
 			ISOException.throwIt((short)(
 			    (short)0x63C0 | pukPin.getTriesRemaining()));
 			return;

@@ -99,7 +99,7 @@ class GetDataTest {
     }
 
     @Test
-    void TestGetMetadata() {
+    void TestGetKeyMetadata() {
         // All slots supported by the YubiKey
         final byte[] allSlots = new byte[]{(byte) 0x80, (byte) 0x81, (byte) 0x82, (byte) 0x83, (byte) 0x84, (byte) 0x85, (byte) 0x86, (byte) 0x87, (byte) 0x88, (byte) 0x89, (byte) 0x8A, (byte) 0x8B, (byte) 0x8C, (byte) 0x8D, (byte) 0x8E, (byte) 0x8F, (byte) 0x90, (byte) 0x91, (byte) 0x92, (byte) 0x93, (byte) 0x94, (byte) 0x95, (byte) 0x9A, (byte) 0x9B, (byte) 0x9C, (byte) 0x9D, (byte) 0x9E, (byte) 0xF9};
 
@@ -215,6 +215,11 @@ class GetDataTest {
                 }
             }
         }
+    }
+
+    @Test
+    void testKeyDefault() {
+
     }
 
     // See https://docs.yubico.com/yesdk/users-manual/application-piv/apdu/metadata.html

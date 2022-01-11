@@ -38,53 +38,6 @@ class PivAppletTest {
     }
 
     @Test
-    void TestVerifyAndSetPIN() throws IOException {
-        final byte INS_VERIFY = (byte)0x20; // Verifies PIN
-        final byte INS_CHANGE_REFERENCE_DATA = (byte)0x24;  // Sets PIN
-        final byte APPLET_PIN_PADDING = (byte)0xFF;
-        final byte[] DEFAULT_PIN = new byte[] {'1', '2', '3', '4', '5', '6', APPLET_PIN_PADDING, APPLET_PIN_PADDING};
-        final byte[] TEST_PIN = new byte[] {'8', '7', '6', '5', '4', '3', '2', '1'};
-        final byte APPLET_PIN = (byte)0x80;
-        final byte[] SUCCESS_CODE = new byte[] {(byte)0x90, (byte)0x00};
-        final byte SW1_INCORRECT_PIN = 0x63;
-        ResponseAPDU response;
-
-        // Install and select applet with no parameters
-        simulator.installApplet(appletAID, PivApplet.class);
-        simulator.selectApplet(appletAID);
-
-        // Verify the default PIN
-        CommandAPDU verifyDefaultPINCommand = new CommandAPDU(0x00, INS_VERIFY, 0x00, APPLET_PIN, DEFAULT_PIN);
-        response = simulator.transmitCommand(verifyDefaultPINCommand);
-        assertArrayEquals(SUCCESS_CODE, response.getBytes(), "Unable to verify default PIN.");
-
-        // Change the PIN
-        // Format: Current PIN and new PIN
-        ByteArrayOutputStream changeDefaultPINBytes = new ByteArrayOutputStream();
-        changeDefaultPINBytes.write(DEFAULT_PIN);
-        changeDefaultPINBytes.write(TEST_PIN);
-
-        // Ensure that the PIN change operation return success
-        CommandAPDU changeDefaultPINCommand = new CommandAPDU(0x00, INS_CHANGE_REFERENCE_DATA, 0x00, APPLET_PIN, changeDefaultPINBytes.toByteArray());
-        response = simulator.transmitCommand(changeDefaultPINCommand);
-        assertArrayEquals(SUCCESS_CODE, response.getBytes(), "Unable to change default PIN.");
-
-        // Ensure that the default PIN no longer works, and that the counter decrements
-        response = simulator.transmitCommand(verifyDefaultPINCommand);
-        int counter = response.getSW2();
-        assertEquals(SW1_INCORRECT_PIN, response.getSW1(), "PIN was not changed, but command returned success.");
-        response = simulator.transmitCommand(verifyDefaultPINCommand);
-        assertEquals(counter - 1, response.getSW2(), "Failed to decrement retries left counter on wrong PIN.");
-
-        // Ensure that the new PIN works, and resets the counter
-        CommandAPDU verifyNewPINCommand = new CommandAPDU(0x00, INS_VERIFY, 0x00, APPLET_PIN, TEST_PIN);
-        response = simulator.transmitCommand(verifyNewPINCommand);
-        assertArrayEquals(SUCCESS_CODE, response.getBytes(), "Unable to verify changed PIN.");
-        response = simulator.transmitCommand(verifyDefaultPINCommand);
-        assertEquals(counter, response.getSW2(), "Failed to reset retries left counter on correct PIN.");
-    }
-
-    @Test
     void TestSelectResponse() {
         // Install the applet with no parameters
         simulator.installApplet(appletAID, PivApplet.class);
