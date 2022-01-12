@@ -254,6 +254,12 @@ public class PivApplet extends Applet
 	private static final byte TAG_CERT_82 = (byte)0x0D;
 	private static final byte TAG_CERT_8C = (byte)0x17;
 
+	private static final byte TAG_INSTALL_PARAMS = (byte)0x80;
+	private static final byte TAG_SERIAL_NUMBER = (byte)0xFD;
+	private static final short FLAG_INSTALL_SERIAL = 0x0001;
+	private static final short FLAG_INSTALL_GUID = 0x0002;
+	private static final short FLAG_INSTALL_FASCN = 0x0004;
+
 	private static final byte TAG_MAX = TAG_CERT_8C;
 	private File[] files = null;
 
@@ -268,9 +274,9 @@ public class PivApplet extends Applet
 	private static final byte ALG_RSA_SHA_256_PKCS1 = (byte)40;
 
 	public static void
-	install(byte[] info, short off, byte len)
+	install(byte[] installParams, short installOffset, byte installLength)
 	{
-		final PivApplet applet = new PivApplet(info, off, len);
+		final PivApplet applet = new PivApplet(installParams, installOffset, installLength);
 		applet.register();
 	}
 
@@ -281,14 +287,10 @@ public class PivApplet extends Applet
 //#endif
 
 	protected
-	PivApplet(byte[] info, short off, byte len)
+	PivApplet(byte[] installParams, short installOffset, byte installLength)
 	{
-		/* Per the GlobalPlatform Specification (currently 2.3.1), the OPEN is responsible for ensuring the following
-		   parameters are provided to the applet install method:
-           - Length of the instance AID, followed by instance AID
-           - Length of the privileges, followed by the privileges
-           - Length of the application specific parameters, followed by the application specific parameters
-		 */
+		// Stores the presence of tags in the install parameters
+		short installFlags = 0x0000;
 
 		randData = RandomData.getInstance(RandomData.ALG_SECURE_RANDOM);
 //#if PIV_SUPPORT_3DES
@@ -403,8 +405,6 @@ public class PivApplet extends Applet
 		    (short)(21 - (short)CARD_ID_FIXED.length));
 
 		serial = new byte[4];
-		randData.generateData(serial, (short)0, (short)4);
-		serial[0] |= (byte)0x80;
 
 		certSerial = new byte[16];
 
@@ -521,6 +521,54 @@ public class PivApplet extends Applet
 		files[TAG_PRINTED_INFO].contactless = File.P_PIN;
 		files[TAG_FACE].contactless = File.P_PIN;
 //#endif
+        /* Per the GlobalPlatform Specification (currently 2.3.1), the OPEN is responsible for ensuring the following
+           parameters are provided to the applet install method:
+           - Length of the instance AID, followed by instance AID
+           - Length of the privileges, followed by the privileges
+           - Length of the application specific parameters, followed by the application specific parameters
+        */
+		if (installLength > 0x03) {
+			byte paramLength = installParams[installOffset];            // AID
+			installOffset = (short)(installOffset + paramLength + 1);   // Skip over AID
+			paramLength = installParams[installOffset];                 // Privileges
+			installOffset = (short)(installOffset + paramLength + 1);   // Skip over privileges
+			paramLength = installParams[installOffset];                 // Install parameter length
+			installOffset += 1;                                         // New offset
+
+			InstallBuffer installBuffer = new InstallBuffer(installParams, installOffset, paramLength);
+			tlv.start(installBuffer);
+
+			if (tlv.readTag() != TAG_INSTALL_PARAMS) {
+				ISOException.throwIt(ISO7816.SW_WRONG_DATA);
+				return;
+			}
+
+			byte tag;
+			while (!tlv.atEnd()) {
+				tag = tlv.readTag();
+				switch (tag) {
+					case TAG_SERIAL_NUMBER:
+						if (tlv.tagLength() != 0x04) {
+							ISOException.throwIt(
+									ISO7816.SW_WRONG_DATA);
+							return;
+						}
+						tlv.read(serial, (short)0x00, (short)0x04);
+						tlv.end();
+						installFlags |= FLAG_INSTALL_SERIAL;
+						break;
+				}
+			}
+		}
+
+		// Initialize data that was not initialized by the installation parameters
+		if (0 == (installFlags & FLAG_INSTALL_SERIAL)) {
+			// Serial number was not provided, so generate one
+			randData.generateData(serial, (short)0, (short)4);
+
+			// Set the high bit to differentiate the serial number from retail Yubikeys
+			serial[0] |= (byte)0x80;
+		}
 
 		initCARDCAP();
 		initCHUID();
