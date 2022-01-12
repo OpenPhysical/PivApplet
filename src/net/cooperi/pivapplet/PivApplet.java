@@ -429,17 +429,17 @@ public class PivApplet extends Applet
 		 * Person Association Category: 6 (Affiliated with Organization)
 		 */
 		fascn = new byte[]{(byte) 0xD4, (byte) 0xE7, (byte) 0x39, (byte) 0xDA, (byte) 0x73, (byte) 0x9C, (byte) 0xED,
-				(byte) 0x39, (byte) 0xCE, (byte) 0x73, (byte) 0x9D, (byte) 0x83, (byte) 0x68, (byte) 0x58, (byte) 0x21,
-				(byte) 0x08, (byte) 0x42, (byte) 0x10, (byte) 0x84, (byte) 0x21, (byte) 0xC8, (byte) 0x42, (byte) 0x10,
-				(byte) 0xB7, (byte) 0xF6};
+		    (byte) 0x39, (byte) 0xCE, (byte) 0x73, (byte) 0x9D, (byte) 0x83, (byte) 0x68, (byte) 0x58, (byte) 0x21,
+		    (byte) 0x08, (byte) 0x42, (byte) 0x10, (byte) 0x84, (byte) 0x21, (byte) 0xC8, (byte) 0x42, (byte) 0x10,
+		    (byte) 0xB7, (byte) 0xF6};
 
 		expiry = new byte[] { '2', '0', '5', '0', '0', '1', '0', '1' };
 
 		slots = new PivSlot[MAX_SLOTS];
 		for (byte i = SLOT_9A; i <= SLOT_9E; ++i)
-			slots[i] = new PivSlot((byte)((byte)0x9A + i));
+		    slots[i] = new PivSlot((byte)((byte)0x9A + i));
 		for (byte i = SLOT_82; i <= SLOT_95; ++i)
-			slots[i] = new PivSlot((byte)((byte)0x82 + i));
+		    slots[i] = new PivSlot((byte)((byte)0x82 + i));
 //#if YKPIV_ATTESTATION
 		slots[SLOT_F9] = new PivSlot((byte)0xF9);
 //#endif
@@ -521,12 +521,12 @@ public class PivApplet extends Applet
 		files[TAG_PRINTED_INFO].contactless = File.P_PIN;
 		files[TAG_FACE].contactless = File.P_PIN;
 //#endif
-        /* Per the GlobalPlatform Specification (currently 2.3.1), the OPEN is responsible for ensuring the following
-           parameters are provided to the applet install method:
-           - Length of the instance AID, followed by instance AID
-           - Length of the privileges, followed by the privileges
-           - Length of the application specific parameters, followed by the application specific parameters
-        */
+		/* Per the GlobalPlatform Specification (currently 2.3.1), the OPEN is responsible for ensuring the following
+		     parameters are provided to the applet install method:
+		  - Length of the instance AID, followed by instance AID
+		  - Length of the privileges, followed by the privileges
+		  - Length of the application specific parameters, followed by the application specific parameters
+		*/
 		if (installLength > 0x03) {
 			byte paramLength = installParams[installOffset];            // AID
 			installOffset = (short)(installOffset + paramLength + 1);   // Skip over AID
@@ -550,7 +550,7 @@ public class PivApplet extends Applet
 					case TAG_SERIAL_NUMBER:
 						if (tlv.tagLength() != 0x04) {
 							ISOException.throwIt(
-									ISO7816.SW_WRONG_DATA);
+							    ISO7816.SW_WRONG_DATA);
 							return;
 						}
 						tlv.read(serial, (short)0x00, (short)0x04);
