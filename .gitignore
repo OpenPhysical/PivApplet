@@ -5,6 +5,7 @@
 /src-gen/
 /test/*.pem
 /test/*.ebox
+/test/ca/*
 /lib/
 *.iml
 .DS_Store

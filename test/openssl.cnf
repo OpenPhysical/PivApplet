@@ -1,0 +1,32 @@
+[ca]
+default_ca = CA_default
+
+[CA_default]
+dir = ca/
+certs = ca/certsdb
+database = ca/index.txt
+certificate = certs/attest_root.pem
+private_key = certs/attest_root_private.key
+serial = ca/serial
+crldir = ca/crl
+crlnumber = ca/crlnumber
+new_certs_dir = ca/certs
+default_md = sha256
+policy = policy_strict
+email_in_dn = no
+
+[req]
+distinguished_name=dn
+
+[dn]
+
+[attest_ca]
+basicConstraints=CA:TRUE,pathlen:1
+subjectKeyIdentifier = hash
+
+[attest_cert]
+basicConstraints=CA:TRUE,pathlen:0
+authorityKeyIdentifier = keyid, issuer:always
+
+[ policy_strict ]
+commonName              = supplied

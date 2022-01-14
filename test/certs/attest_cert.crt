@@ -1,0 +1,61 @@
+Certificate:
+    Data:
+        Version: 3 (0x2)
+        Serial Number: 1 (0x1)
+    Signature Algorithm: ecdsa-with-SHA256
+        Issuer: CN=Attestation Root
+        Validity
+            Not Before: Jan 14 13:14:52 2022 GMT
+            Not After : Jan 12 13:14:52 2032 GMT
+        Subject: CN=Attestation Cert
+        Subject Public Key Info:
+            Public Key Algorithm: rsaEncryption
+                Public-Key: (2048 bit)
+                Modulus:
+                    00:ec:9c:20:26:2c:c2:9c:da:b9:f5:49:a9:b3:15:
+                    1b:5e:4c:fc:ee:18:9a:38:ec:df:76:d1:af:23:2d:
+                    a8:97:e3:67:19:3a:6d:17:93:41:b5:78:68:de:f2:
+                    28:4f:e1:a6:a3:b3:3a:58:7c:56:2f:57:22:70:60:
+                    d8:50:77:78:c8:fd:4e:ef:57:4f:5e:1f:6b:e5:2c:
+                    53:dc:1b:c7:a8:c6:3d:94:d4:31:26:4d:c4:a1:84:
+                    e7:0e:54:6d:00:0a:98:ba:e6:73:bf:74:4a:85:3c:
+                    9d:c5:0c:c8:a1:62:d7:ed:7b:1c:6f:b2:07:b1:d9:
+                    62:42:4b:61:7e:a4:87:d3:81:26:1d:bb:7c:02:ea:
+                    ad:60:a6:43:8d:7e:46:e1:3b:01:07:26:a8:9c:c5:
+                    5d:26:a3:be:65:c4:a3:85:43:04:0a:95:d4:c5:94:
+                    c8:33:b9:95:13:96:d0:c2:12:fe:e9:2d:62:52:b7:
+                    79:bf:23:8f:5c:11:14:d5:bc:ed:06:d3:39:97:1c:
+                    6c:e8:09:b1:d7:31:b5:1f:b4:85:b0:a4:eb:85:d6:
+                    d5:be:03:a3:df:51:1f:2d:d5:77:f9:ea:88:8e:2a:
+                    33:cd:d5:cb:69:24:6c:7b:59:3a:71:a1:40:8f:bb:
+                    f5:c6:6f:9e:bd:10:d9:14:00:40:ea:2d:5d:1b:98:
+                    ff:1f
+                Exponent: 65537 (0x10001)
+        X509v3 extensions:
+            X509v3 Basic Constraints: 
+                CA:TRUE, pathlen:0
+            X509v3 Authority Key Identifier: 
+                keyid:57:34:40:0A:2B:17:70:C4:4B:AA:09:83:D0:29:BC:75:C5:44:BF:03
+                DirName:/CN=Attestation Root
+                serial:F9:0E:4C:5C:34:08:D9:44
+
+    Signature Algorithm: ecdsa-with-SHA256
+         30:45:02:21:00:98:0c:5e:a3:c6:8d:3a:d3:16:13:6f:e2:ee:
+         30:77:e4:95:90:6b:f7:87:e0:cb:c9:00:40:36:dd:2a:5f:7d:
+         62:02:20:28:79:c2:aa:b2:54:2d:db:9f:bf:5e:d1:bc:9d:54:
+         c8:e6:50:67:45:6b:23:ef:55:1b:fc:3a:fd:17:25:11:bf
+-----BEGIN CERTIFICATE-----
+MIICUDCCAfagAwIBAgIBATAKBggqhkjOPQQDAjAbMRkwFwYDVQQDDBBBdHRlc3Rh
+dGlvbiBSb290MB4XDTIyMDExNDEzMTQ1MloXDTMyMDExMjEzMTQ1MlowGzEZMBcG
+A1UEAwwQQXR0ZXN0YXRpb24gQ2VydDCCASIwDQYJKoZIhvcNAQEBBQADggEPADCC
+AQoCggEBAOycICYswpzaufVJqbMVG15M/O4Ymjjs33bRryMtqJfjZxk6bReTQbV4
+aN7yKE/hpqOzOlh8Vi9XInBg2FB3eMj9Tu9XT14fa+UsU9wbx6jGPZTUMSZNxKGE
+5w5UbQAKmLrmc790SoU8ncUMyKFi1+17HG+yB7HZYkJLYX6kh9OBJh27fALqrWCm
+Q41+RuE7AQcmqJzFXSajvmXEo4VDBAqV1MWUyDO5lROW0MIS/uktYlK3eb8jj1wR
+FNW87QbTOZccbOgJsdcxtR+0hbCk64XW1b4Do99RHy3Vd/nqiI4qM83Vy2kkbHtZ
+OnGhQI+79cZvnr0Q2RQAQOotXRuY/x8CAwEAAaNgMF4wDwYDVR0TBAgwBgEB/wIB
+ADBLBgNVHSMERDBCgBRXNEAKKxdwxEuqCYPQKbx1xUS/A6EfpB0wGzEZMBcGA1UE
+AwwQQXR0ZXN0YXRpb24gUm9vdIIJAPkOTFw0CNlEMAoGCCqGSM49BAMCA0gAMEUC
+IQCYDF6jxo060xYTb+LuMHfklZBr94fgy8kAQDbdKl99YgIgKHnCqrJULdufv17R
+vJ1UyOZQZ0VrI+9VG/w6/RclEb8=
+-----END CERTIFICATE-----
