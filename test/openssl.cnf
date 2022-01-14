@@ -27,6 +27,7 @@ subjectKeyIdentifier = hash
 [attest_cert]
 basicConstraints=CA:TRUE,pathlen:0
 authorityKeyIdentifier = keyid, issuer:always
+subjectKeyIdentifier = hash
 
 [ policy_strict ]
 commonName              = supplied
