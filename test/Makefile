@@ -27,5 +27,6 @@ test-certs: .PHONY
 	# Attestation cert
 	openssl genrsa 2048 2> /dev/null | openssl rsa -inform PEM -outform DER 2> /dev/null > certs/attest_cert.key
 	openssl req -new -sha256 -key certs/attest_cert.key -keyform DER -out certs/attest_cert.csr -subj '/CN=Attestation Cert/'
-	openssl ca -batch -in certs/attest_cert.csr -extensions attest_cert -config openssl.cnf -out certs/attest_cert.crt -days 3650
+	openssl ca -batch -in certs/attest_cert.csr -extensions attest_cert -config openssl.cnf -out certs/attest_cert.pem -days 3650
+	openssl x509 -in attest_cert.pem -out attest_cert.der -inform PEM -outform DER
 .PHONY:
