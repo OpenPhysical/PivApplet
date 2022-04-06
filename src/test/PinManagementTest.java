@@ -50,13 +50,11 @@ public class PinManagementTest {
 
     final byte APPLET_PIN_PADDING = (byte)0xFF;
 
-    // Default PIN
     final byte[] DEFAULT_PIN = new byte[] {'1', '2', '3', '4', '5', '6', APPLET_PIN_PADDING, APPLET_PIN_PADDING};
-    // PIN to change to
-    final byte[] TEST_PIN = new byte[] {'8', '7', '6', '5', '4', '3', '2', '1'};
-    // Default PUK
     final byte[] DEFAULT_PUK = new byte[] {'1', '2', '3', '4', '5', '6', '7', '8'};
-    // PIN to change to
+
+    // PIN and PUK to test changes with
+    final byte[] TEST_PIN = new byte[] {'8', '7', '6', '5', '4', '3', '2', '1'};
     final byte[] TEST_PUK = new byte[] {'8', '7', '6', '5', '4', '3', '2', '1'};
 
     // Invalid zero-length PIN with padding

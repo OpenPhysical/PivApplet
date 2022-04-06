@@ -505,6 +505,8 @@ public class PivApplet extends Applet
 		files[TAG_FACE] = new File();
 		files[TAG_FACE].contact = File.P_PIN;
 
+		// The printed info tag is used by ykman to store the management key
+		// when PIN protection is on
 		files[TAG_PRINTED_INFO] = new File();
 		files[TAG_PRINTED_INFO].contact = File.P_PIN;
 
@@ -572,6 +574,7 @@ public class PivApplet extends Applet
 
 		initCARDCAP();
 		initCHUID();
+		initMGMT();
 		initKEYHIST();
 	}
 
@@ -848,6 +851,7 @@ public class PivApplet extends Applet
 		wtlv.writeByte(slot.pinPolicy);
 		wtlv.writeByte((byte)0x01);
 
+		// Tag 0x03, one byte, whether the slot was imported (2), or not (1)
 		wtlv.writeTagRealLen((byte)0x03, (short)1);
 		if (slot.imported)
 			wtlv.writeByte((byte)2);
@@ -2930,6 +2934,7 @@ public class PivApplet extends Applet
 
 		initCARDCAP();
 		initCHUID();
+		initMGMT();
 		initKEYHIST();
 
 		try {
@@ -3116,12 +3121,6 @@ public class PivApplet extends Applet
 			tlv.end();
 			tlv.finish();
 
-			if (file == null || file.data == null ||
-			    file.len == 0) {
-				ISOException.throwIt(ISO7816.SW_FILE_NOT_FOUND);
-				return;
-			}
-
 			final byte policy;
 			if (isContact())
 				policy = file.contact;
@@ -3137,6 +3136,14 @@ public class PivApplet extends Applet
 			if (policy == File.P_PIN && !pivPin.isValidated()) {
 				ISOException.throwIt(
 				    ISO7816.SW_SECURITY_STATUS_NOT_SATISFIED);
+				return;
+			}
+
+			// File existence is checked after PIN verification to avoid disclosure of the existence or non-existence
+			// of protected files to unauthenticated users.
+			if (file == null || file.data == null ||
+					file.len == 0) {
+				ISOException.throwIt(ISO7816.SW_FILE_NOT_FOUND);
 				return;
 			}
 
@@ -3244,6 +3251,30 @@ public class PivApplet extends Applet
 		if (files[TAG_CARDCAP] == null)
 			files[TAG_CARDCAP] = new File();
 		final File f = files[TAG_CARDCAP];
+		f.len = len;
+		if (f.data == null || f.data.length < len)
+			f.data = new byte[len];
+		outgoing.read(f.data, (short)0, len);
+	}
+
+	/**
+	 * Initialize the management object (for compatibility purposes)
+	 */
+	private void
+	initMGMT() {
+		outgoing.reset();
+		wtlv.start(outgoing);
+
+		/* YubiKey Management Data */
+		wtlv.push((byte)0x80);
+		wtlv.pop();
+		wtlv.end();
+
+		// Read the outgoing buffer into the management data buffer
+		final short len = outgoing.available();
+		if (ykFiles[TAG_YK_PIVMAN] == null)
+			ykFiles[TAG_YK_PIVMAN] = new File();
+		final File f = ykFiles[TAG_YK_PIVMAN];
 		f.len = len;
 		if (f.data == null || f.data.length < len)
 			f.data = new byte[len];
