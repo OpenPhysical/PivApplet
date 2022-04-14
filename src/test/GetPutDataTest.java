@@ -100,7 +100,6 @@ class GetPutDataTest {
     final byte APPLET_PIN_PADDING = (byte) 0xFF;
     final byte[] DEFAULT_PIN = new byte[]{'1', '2', '3', '4', '5', '6', APPLET_PIN_PADDING, APPLET_PIN_PADDING};
 
-
     CardSimulator simulator = new CardSimulator();
     AID appletAID = AIDUtil.create("A000000308000010000100");
 
@@ -121,8 +120,7 @@ class GetPutDataTest {
                 SLOT_MANAGEMENT, commandData);
         ResponseAPDU response = simulator.transmitCommand(authenticateManagementKeyCommand);
         assertEquals(SW_SUCCESS, response.getSW(), String.format("Incorrect status response returned for " +
-                "authenticate: " +
-                "0x%04X", response.getSW()));
+                "authenticate: 0x%04X", response.getSW()));
 
         // Some sanity checking
         byte[] responseData = response.getData();
@@ -156,21 +154,6 @@ class GetPutDataTest {
 
     @Test
     void TestGetKeyMetadata() {
-        final byte[] constant_1 = {3, 5};
-        final byte[] constant_2 = {33, 50, 33, -103, -127, 35, 34, -120, -120, 34, 35, -127, -103, 33, 50, 33};
-        final byte[] constant_3 = {3, 1, 7, 1, 104, 9, 1};
-        final byte[] allValues = new byte[255];
-
-        for (int i = 0; i < 255; i++) {
-            allValues[i] = (byte) i;
-        }
-
-        String first = HexUtil.toHexString(constant_1, constant_1.length);
-        String second = HexUtil.toHexString(constant_2, constant_2.length);
-        String third = HexUtil.toHexString(constant_3, constant_3.length);
-        String fourth = HexUtil.toHexString(allValues, allValues.length);
-        int i = (byte) 13;
-
         // All slots supported by the YubiKey
         final byte[] allSlots = new byte[]{(byte) 0x80, (byte) 0x81, (byte) 0x82, (byte) 0x83, (byte) 0x84,
                 (byte) 0x85, (byte) 0x86, (byte) 0x87, (byte) 0x88, (byte) 0x89, (byte) 0x8A, (byte) 0x8B,
@@ -411,11 +394,11 @@ class GetPutDataTest {
         // 0x5c 0x03        [Tag List] [Tag Len]
         //  0x5f 0xc1 0x09  PIV Printed Data
         writePrintedObjectBytes.write(new byte[]{
-            TAG_PIV_DATA, (byte)0x03, TAG_PIV_IDENTIFIER_PREFIX, TAG_PIV_IDENTIFIER_SUFFIX, TAG_PRINTED_DATA});
+                TAG_PIV_DATA, (byte) 0x03, TAG_PIV_IDENTIFIER_PREFIX, TAG_PIV_IDENTIFIER_SUFFIX, TAG_PRINTED_DATA});
 
         // 0x53 [LEN] [DATA]
         writePrintedObjectBytes.write(TAG_PIV_OBJECT_DATA);
-        writePrintedObjectBytes.write((byte)managementData.length);
+        writePrintedObjectBytes.write((byte) managementData.length);
         writePrintedObjectBytes.write(managementData);
 
         // Write the printed data
@@ -428,15 +411,15 @@ class GetPutDataTest {
         // Read it back and verify
         ByteArrayOutputStream readPrintedObjectBytes = new ByteArrayOutputStream();
         readPrintedObjectBytes.write(TAG_PIV_OBJECT_DATA);
-        readPrintedObjectBytes.write((byte)managementData.length);
+        readPrintedObjectBytes.write((byte) managementData.length);
         readPrintedObjectBytes.write(managementData);
 
         response = simulator.transmitCommand(getPrintedDataCommand);
         assertEquals(SW_SUCCESS, response.getSW(), "Get Data on printed information must return 0x9000 (success) " +
                 "after being written");
         byte[] getPrintedDataResponse = response.getData();
-        assertArrayEquals(readPrintedObjectBytes.toByteArray(), getPrintedDataResponse, "Response data must match and be " +
-                "properly formatted.");
+        assertArrayEquals(readPrintedObjectBytes.toByteArray(), getPrintedDataResponse, "Response data must match and" +
+                " be properly formatted.");
 
         // Reset the runtime to make sure that the command requires authentication
         simulator.resetRuntime();
@@ -454,7 +437,7 @@ class GetPutDataTest {
     }
 
     @Test
-    void testKeyDefault() {
+    void testGetFirmwareVersion() {
 
     }
 

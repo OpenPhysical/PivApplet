@@ -3121,6 +3121,11 @@ public class PivApplet extends Applet
 			tlv.end();
 			tlv.finish();
 
+			if (file == null) {
+				ISOException.throwIt(ISO7816.SW_FILE_NOT_FOUND);
+				return;
+			}
+
 			final byte policy;
 			if (isContact())
 				policy = file.contact;
@@ -3139,10 +3144,9 @@ public class PivApplet extends Applet
 				return;
 			}
 
-			// File existence is checked after PIN verification to avoid disclosure of the existence or non-existence
-			// of protected files to unauthenticated users.
-			if (file == null || file.data == null ||
-					file.len == 0) {
+			// File data existence is checked after PIN verification to avoid disclosure of the existence or
+			// non-existence of protected files to unauthenticated users.
+			if (file.data == null || file.len == 0) {
 				ISOException.throwIt(ISO7816.SW_FILE_NOT_FOUND);
 				return;
 			}

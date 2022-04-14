@@ -34,7 +34,17 @@ class AttestationTest {
     }
 
     @Test
-    void VerifySignFails() {
+    void testDecryptWithF9Fails() {
+
+    }
+
+    @Test
+    void testKeyAgreementWithF9Fails() {
+
+    }
+
+    @Test
+    void testSignWithF9Fails() {
 
     }
 
