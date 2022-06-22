@@ -144,6 +144,9 @@ public class PivApplet extends Applet
 	/* Our own private extensions. */
 	private static final byte INS_SG_DEBUG = (byte)0xe0;
 
+	/* Yubikey uses 6A88 for "Referenced data not found" */
+	protected static final short SW_REFERENCED_DATA_NOT_FOUND = (short)0x6A88;
+
 	/* ASSERT: tag.end() was called but tag has bytes left. */
 	protected static final short SW_TAG_END_ASSERT = (short)0x6F60;
 	protected static final short SW_DATA_END_ASSERT = (short)0x6F63;
@@ -199,22 +202,22 @@ public class PivApplet extends Applet
 	private KeyAgreement ecdh = null;
 	private KeyAgreement ecdhSha = null;
 
-	private static final byte MAX_SLOTS = (byte)17;
+	private static final byte MAX_SLOTS = (byte)26;
 
 	private static final byte SLOT_9A = (byte)0;
 	private static final byte SLOT_9B = (byte)1;
 	private static final byte SLOT_9C = (byte)2;
 	private static final byte SLOT_9D = (byte)3;
 	private static final byte SLOT_9E = (byte)4;
-	private static final byte SLOT_82 = (byte)5;
-	private static final byte SLOT_8C = (byte)15;
-	private static final byte SLOT_F9 = (byte)16;
+	private static final byte SLOT_F9 = (byte)5;
+	private static final byte SLOT_82 = (byte)6;
+	private static final byte SLOT_95 = (byte)25;
 	private PivSlot[] slots = null;
 	private byte retiredKeys = 0;
 
 	private static final byte SLOT_MIN_HIST = SLOT_82;
 	private static final byte MIN_HIST_SLOT = (byte)0x82;
-	private static final byte MAX_HIST_SLOT = (byte)0x8C;
+	private static final byte MAX_HIST_SLOT = (byte)0x95;
 
 	private static final byte PIV_ALG_DEFAULT = (byte)0x00;
 	private static final byte PIV_ALG_3DES = (byte)0x03;
@@ -251,6 +254,12 @@ public class PivApplet extends Applet
 	private static final byte TAG_CERT_82 = (byte)0x0D;
 	private static final byte TAG_CERT_8C = (byte)0x17;
 
+	private static final byte TAG_INSTALL_PARAMS = (byte)0x80;
+	private static final byte TAG_SERIAL_NUMBER = (byte)0xFD;
+	private static final short FLAG_INSTALL_SERIAL = 0x0001;
+	private static final short FLAG_INSTALL_GUID = 0x0002;
+	private static final short FLAG_INSTALL_FASCN = 0x0004;
+
 	private static final byte TAG_MAX = TAG_CERT_8C;
 	private File[] files = null;
 
@@ -265,9 +274,9 @@ public class PivApplet extends Applet
 	private static final byte ALG_RSA_SHA_256_PKCS1 = (byte)40;
 
 	public static void
-	install(byte[] info, short off, byte len)
+	install(byte[] installParams, short installOffset, byte installLength)
 	{
-		final PivApplet applet = new PivApplet();
+		final PivApplet applet = new PivApplet(installParams, installOffset, installLength);
 		applet.register();
 	}
 
@@ -278,8 +287,11 @@ public class PivApplet extends Applet
 //#endif
 
 	protected
-	PivApplet()
+	PivApplet(byte[] installParams, short installOffset, byte installLength)
 	{
+		// Stores the presence of tags in the install parameters
+		short installFlags = 0x0000;
+
 		randData = RandomData.getInstance(RandomData.ALG_SECURE_RANDOM);
 //#if PIV_SUPPORT_3DES
 		tripleDes = Cipher.getInstance(Cipher.ALG_DES_CBC_NOPAD, false);
@@ -393,18 +405,41 @@ public class PivApplet extends Applet
 		    (short)(21 - (short)CARD_ID_FIXED.length));
 
 		serial = new byte[4];
-		randData.generateData(serial, (short)0, (short)4);
-		serial[0] |= (byte)0x80;
 
 		certSerial = new byte[16];
-		fascn = new byte[25];
+
+		/* Per Personal Identity Verification (PIV) Interoperability For Issuers, v2.0.1:
+		 * NFIs of PIV-Interoperable credentials are required to generate and issue FASC-N
+		 * values which populate the value “9” for the Agency Code, System Code, and Credential Number.
+		 * This represents the first 14 digits of the FASC-N.
+		 *
+		 * When the first 14 digits are 9, uniqueness of the FASC-N is not guaranteed, and the GUID is used instead
+		 * to provide uniqueness.  Many of the fields have semantic value, which further reduces the amount of entropy
+		 * in the FASC-N for non-federal issuers.  Rather than attempt to construct a globally unique ID in essentially
+		 * 10 decimal digits, a non-federal FASC-N IS hard-coded to provide the mandatory elements to instruct readers
+		 * to switch to GUID use.
+		 *
+		 * Data encoded in this FASC-N:
+		 * Agency Name, System Code, and Credential Number are all 9s (non-federal)
+		 * Credential Series: 0 (no major system changes)
+		 * Individual Credential Issue: 1 (always, as recommended in PACS implementation guidance)
+		 * Person Identifier: 00000 00000
+		 * Organizational Category: 3 (Commercial Enterprise)
+		 * Organizational Identifier: 0000
+		 * Person Association Category: 6 (Affiliated with Organization)
+		 */
+		fascn = new byte[]{(byte) 0xD4, (byte) 0xE7, (byte) 0x39, (byte) 0xDA, (byte) 0x73, (byte) 0x9C, (byte) 0xED,
+		    (byte) 0x39, (byte) 0xCE, (byte) 0x73, (byte) 0x9D, (byte) 0x83, (byte) 0x68, (byte) 0x58, (byte) 0x21,
+		    (byte) 0x08, (byte) 0x42, (byte) 0x10, (byte) 0x84, (byte) 0x21, (byte) 0xC8, (byte) 0x42, (byte) 0x10,
+		    (byte) 0xB7, (byte) 0xF6};
+
 		expiry = new byte[] { '2', '0', '5', '0', '0', '1', '0', '1' };
 
 		slots = new PivSlot[MAX_SLOTS];
 		for (byte i = SLOT_9A; i <= SLOT_9E; ++i)
-			slots[i] = new PivSlot((byte)((byte)0x9A + i));
-		for (byte i = SLOT_82; i <= SLOT_8C; ++i)
-			slots[i] = new PivSlot((byte)((byte)0x82 + i));
+		    slots[i] = new PivSlot((byte)((byte)0x9A + i));
+		for (byte i = SLOT_82; i <= SLOT_95; ++i)
+		    slots[i] = new PivSlot((byte)((byte)0x82 + i));
 //#if YKPIV_ATTESTATION
 		slots[SLOT_F9] = new PivSlot((byte)0xF9);
 //#endif
@@ -441,7 +476,7 @@ public class PivApplet extends Applet
 		 * Allow the admin key to be "used" (for auth) without a
 		 * PIN VERIFY command first.
 		 */
-		slots[SLOT_9B].pinPolicy = PivSlot.P_NEVER;
+		slots[SLOT_9B].pinPolicy = PivSlot.P_DEFAULT;
 
 		pinRetries = (byte)5;
 		pivPin = new OwnerPIN(pinRetries, (byte)8);
@@ -470,6 +505,8 @@ public class PivApplet extends Applet
 		files[TAG_FACE] = new File();
 		files[TAG_FACE].contact = File.P_PIN;
 
+		// The printed info tag is used by ykman to store the management key
+		// when PIN protection is on
 		files[TAG_PRINTED_INFO] = new File();
 		files[TAG_PRINTED_INFO].contact = File.P_PIN;
 
@@ -486,13 +523,59 @@ public class PivApplet extends Applet
 		files[TAG_PRINTED_INFO].contactless = File.P_PIN;
 		files[TAG_FACE].contactless = File.P_PIN;
 //#endif
+		/* Per the GlobalPlatform Specification (currently 2.3.1), the OPEN is responsible for ensuring the following
+		     parameters are provided to the applet install method:
+		  - Length of the instance AID, followed by instance AID
+		  - Length of the privileges, followed by the privileges
+		  - Length of the application specific parameters, followed by the application specific parameters
+		*/
+		if (installLength > 0x03) {
+			byte paramLength = installParams[installOffset];            // AID
+			installOffset = (short)(installOffset + paramLength + 1);   // Skip over AID
+			paramLength = installParams[installOffset];                 // Privileges
+			installOffset = (short)(installOffset + paramLength + 1);   // Skip over privileges
+			paramLength = installParams[installOffset];                 // Install parameter length
+			installOffset += 1;                                         // New offset
+
+			InstallBuffer installBuffer = new InstallBuffer(installParams, installOffset, paramLength);
+			tlv.start(installBuffer);
+
+			if (tlv.readTag() != TAG_INSTALL_PARAMS) {
+				ISOException.throwIt(ISO7816.SW_WRONG_DATA);
+				return;
+			}
+
+			byte tag;
+			while (!tlv.atEnd()) {
+				tag = tlv.readTag();
+				switch (tag) {
+					case TAG_SERIAL_NUMBER:
+						if (tlv.tagLength() != 0x04) {
+							ISOException.throwIt(
+							    ISO7816.SW_WRONG_DATA);
+							return;
+						}
+						tlv.read(serial, (short)0x00, (short)0x04);
+						tlv.end();
+						installFlags |= FLAG_INSTALL_SERIAL;
+						break;
+				}
+			}
+		}
+
+		// Initialize data that was not initialized by the installation parameters
+		if (0 == (installFlags & FLAG_INSTALL_SERIAL)) {
+			// Serial number was not provided, so generate one
+			randData.generateData(serial, (short)0, (short)4);
+
+			// Set the high bit to differentiate the serial number from retail Yubikeys
+			serial[0] |= (byte)0x80;
+		}
 
 		initCARDCAP();
 		initCHUID();
+		initMGMT();
 		initKEYHIST();
-//#if YKPIV_ATTESTATION
-		initAttestation();
-//#endif
 	}
 
 	public void
@@ -620,6 +703,11 @@ public class PivApplet extends Applet
 			final PivSlot slot = slots[idx];
 			if (slot == null)
 				continue;
+
+			// The default policy for 9c is PIN_ALWAYS.  The rest of the slots have different defaults.
+			if (slot.pinPolicy == PivSlot.P_DEFAULT && idx != SLOT_9C)
+				continue;
+
 			if (slot.pinPolicy != PivSlot.P_ALWAYS)
 				continue;
 			if (slot.flags[PivSlot.F_UNLOCKED] &&
@@ -680,6 +768,11 @@ public class PivApplet extends Applet
 			outgoingLe = apdu.setOutgoing();
 			wtlv.useApdu((short)0, outgoingLe);
 
+			// Tag 0x01, one byte, 0xFF (static value)
+			// see https://docs.yubico.com/yesdk/users-manual/application-piv/apdu/metadata.html
+			wtlv.writeTagRealLen((byte)0x01, (short)1);
+			wtlv.writeByte((byte)0xFF);
+
 			// Tag 0x05, one byte, whether the PIN or PUK is default
 			wtlv.writeTagRealLen((byte)0x05, (short)1);
 			if (key == (byte)0x80 && pivPinIsDefault)
@@ -711,6 +804,8 @@ public class PivApplet extends Applet
 			final byte idx = (byte)(SLOT_MIN_HIST +
 			    (byte)(key - MIN_HIST_SLOT));
 			slot = slots[idx];
+		} else if ((byte)0xF9 == key) {
+			slot = slots[SLOT_F9];
 		} else {
 			ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
 			return;
@@ -738,6 +833,8 @@ public class PivApplet extends Applet
 		} else if (slot.sym != null) {
 			wtlv.writeTagRealLen((byte)0x01, (short)1);
 			wtlv.writeByte(slot.symAlg);
+		} else {
+			ISOException.throwIt(SW_REFERENCED_DATA_NOT_FOUND);
 		}
 
 		if (key == (byte)0x9B) {
@@ -754,11 +851,12 @@ public class PivApplet extends Applet
 		wtlv.writeByte(slot.pinPolicy);
 		wtlv.writeByte((byte)0x01);
 
+		// Tag 0x03, one byte, whether the slot was imported (2), or not (1)
 		wtlv.writeTagRealLen((byte)0x03, (short)1);
 		if (slot.imported)
-			wtlv.writeByte((byte)1);
+			wtlv.writeByte((byte)2);
 		else
-			wtlv.writeByte((byte)0);
+			wtlv.writeByte((byte)1);
 
 		if (slot.asym != null) {
 			short len;
@@ -1066,6 +1164,7 @@ public class PivApplet extends Applet
 		short lc, len, cLen;
 		byte tag, alg = (byte)0xFF;
 		final byte key;
+		final byte idx;
 		final PivSlot slot;
 
 		if (buffer[ISO7816.OFFSET_P1] != (byte)0x00) {
@@ -1076,13 +1175,14 @@ public class PivApplet extends Applet
 		key = buffer[ISO7816.OFFSET_P2];
 
 		if (key >= (byte)0x9A && key <= (byte)0x9E) {
-			final byte idx = (byte)(key - (byte)0x9A);
+			idx = (byte)(key - (byte)0x9A);
 			slot = slots[idx];
 		} else if (key >= MIN_HIST_SLOT && key <= MAX_HIST_SLOT) {
-			final byte idx = (byte)(SLOT_MIN_HIST +
+			idx = (byte)(SLOT_MIN_HIST +
 			    (byte)(key - MIN_HIST_SLOT));
 			slot = slots[idx];
 		} else if (key == (byte)0xF9) {
+			idx = SLOT_F9;
 			slot = slots[SLOT_F9];
 		} else {
 			ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
@@ -1123,6 +1223,9 @@ public class PivApplet extends Applet
 			return;
 		}
 
+		// Set the default PIN policy by slot, in case the tag was not provided
+		setDefaultPinPolicy(slot, idx);
+
 		while (!tlv.atEnd()) {
 			tag = tlv.readTag();
 			switch (tag) {
@@ -1161,17 +1264,6 @@ public class PivApplet extends Applet
 				tag = tlv.readByte();
 				switch (tag) {
 				case PivSlot.P_DEFAULT:
-					if (key == (byte)0x9e) {
-						slot.pinPolicy =
-						    PivSlot.P_NEVER;
-					} else if (key == (byte)0x9c) {
-						slot.pinPolicy =
-						    PivSlot.P_ALWAYS;
-					} else {
-						slot.pinPolicy =
-						    PivSlot.P_ONCE;
-					}
-					break;
 				case PivSlot.P_NEVER:
 				case PivSlot.P_ONCE:
 				case PivSlot.P_ALWAYS:
@@ -1365,11 +1457,12 @@ public class PivApplet extends Applet
 			return;
 		}
 
+		final byte idx;
 		if (key >= (byte)0x9A && key <= (byte)0x9E) {
-			final byte idx = (byte)(key - (byte)0x9A);
+			idx = (byte)(key - (byte)0x9A);
 			slot = slots[idx];
 		} else if (key >= MIN_HIST_SLOT && key <= MAX_HIST_SLOT) {
-			final byte idx = (byte)(SLOT_MIN_HIST +
+			idx = (byte)(SLOT_MIN_HIST +
 			    (byte)(key - MIN_HIST_SLOT));
 			slot = slots[idx];
 		} else {
@@ -1387,6 +1480,9 @@ public class PivApplet extends Applet
 			return;
 
 		tlv.start(input);
+
+		// Set the default PIN policy by slot, in case the tag was not provided
+		setDefaultPinPolicy(slot, idx);
 
 		switch (alg) {
 //#if PIV_SUPPORT_RSA
@@ -1511,17 +1607,6 @@ public class PivApplet extends Applet
 					tlv.end();
 					switch (tag) {
 					case PivSlot.P_DEFAULT:
-						if (key == (byte)0x9e) {
-							slot.pinPolicy =
-							    PivSlot.P_NEVER;
-						} else if (key == (byte)0x9c) {
-							slot.pinPolicy =
-							    PivSlot.P_ALWAYS;
-						} else {
-							slot.pinPolicy =
-							    PivSlot.P_ONCE;
-						}
-						break;
 					case PivSlot.P_NEVER:
 					case PivSlot.P_ONCE:
 					case PivSlot.P_ALWAYS:
@@ -1601,17 +1686,6 @@ public class PivApplet extends Applet
 					tlv.end();
 					switch (tag) {
 					case PivSlot.P_DEFAULT:
-						if (key == (byte)0x9e) {
-							slot.pinPolicy =
-							    PivSlot.P_NEVER;
-						} else if (key == (byte)0x9c) {
-							slot.pinPolicy =
-							    PivSlot.P_ALWAYS;
-						} else {
-							slot.pinPolicy =
-							    PivSlot.P_ONCE;
-						}
-						break;
 					case PivSlot.P_NEVER:
 					case PivSlot.P_ONCE:
 					case PivSlot.P_ALWAYS:
@@ -1664,6 +1738,20 @@ public class PivApplet extends Applet
 			slot.asym.getPrivate().clearKey();
 			ISOException.throwIt(ISO7816.SW_WRONG_DATA);
 			return;
+		}
+	}
+
+	private void
+	setDefaultPinPolicy(PivSlot slot, byte idx)
+	{
+		if (idx == SLOT_9B) {
+			slot.pinPolicy = PivSlot.P_DEFAULT;
+		} else if (idx == SLOT_9C) {
+			slot.pinPolicy = PivSlot.P_ALWAYS;
+		} else if (idx == SLOT_9E) {
+			slot.pinPolicy = PivSlot.P_NEVER;
+		} else {
+			slot.pinPolicy = PivSlot.P_ONCE;
 		}
 	}
 
@@ -2369,7 +2457,18 @@ public class PivApplet extends Applet
 			return;
 		}
 
-		if (slot.pinPolicy != PivSlot.P_NEVER &&
+		byte pinPolicy = slot.pinPolicy;
+		if (pinPolicy == PivSlot.P_DEFAULT) {
+			if (key == (byte)0x9b || key == (byte)0x9e) {
+				pinPolicy = PivSlot.P_NEVER;
+			} else if (key == (byte)0x9c) {
+				pinPolicy = PivSlot.P_ALWAYS;
+			} else {
+				pinPolicy = PivSlot.P_ONCE;
+			}
+		}
+
+		if (pinPolicy != PivSlot.P_NEVER &&
 		    !slot.flags[PivSlot.F_UNLOCKED]) {
 			ISOException.throwIt(
 			    ISO7816.SW_SECURITY_STATUS_NOT_SATISFIED);
@@ -2707,8 +2806,9 @@ public class PivApplet extends Applet
 			return;
 		}
 
-		if (!pukPin.isValidated() &&
-		    !pukPin.check(buffer, pukOff, (byte)8)) {
+		// Always check the PUK value, and if the PUK is wrong, reset the validated flag.
+		if (!pukPin.check(buffer, pukOff, (byte)8)) {
+			pukPin.reset();
 			ISOException.throwIt((short)(
 			    (short)0x63C0 | pukPin.getTriesRemaining()));
 			return;
@@ -2834,10 +2934,8 @@ public class PivApplet extends Applet
 
 		initCARDCAP();
 		initCHUID();
+		initMGMT();
 		initKEYHIST();
-//#if YKPIV_ATTESTATION
-		initAttestation();
-//#endif
 
 		try {
 			JCSystem.requestObjectDeletion();
@@ -3023,8 +3121,7 @@ public class PivApplet extends Applet
 			tlv.end();
 			tlv.finish();
 
-			if (file == null || file.data == null ||
-			    file.len == 0) {
+			if (file == null) {
 				ISOException.throwIt(ISO7816.SW_FILE_NOT_FOUND);
 				return;
 			}
@@ -3044,6 +3141,13 @@ public class PivApplet extends Applet
 			if (policy == File.P_PIN && !pivPin.isValidated()) {
 				ISOException.throwIt(
 				    ISO7816.SW_SECURITY_STATUS_NOT_SATISFIED);
+				return;
+			}
+
+			// File data existence is checked after PIN verification to avoid disclosure of the existence or
+			// non-existence of protected files to unauthenticated users.
+			if (file.data == null || file.len == 0) {
+				ISOException.throwIt(ISO7816.SW_FILE_NOT_FOUND);
 				return;
 			}
 
@@ -3157,6 +3261,30 @@ public class PivApplet extends Applet
 		outgoing.read(f.data, (short)0, len);
 	}
 
+	/**
+	 * Initialize the management object (for compatibility purposes)
+	 */
+	private void
+	initMGMT() {
+		outgoing.reset();
+		wtlv.start(outgoing);
+
+		/* YubiKey Management Data */
+		wtlv.push((byte)0x80);
+		wtlv.pop();
+		wtlv.end();
+
+		// Read the outgoing buffer into the management data buffer
+		final short len = outgoing.available();
+		if (ykFiles[TAG_YK_PIVMAN] == null)
+			ykFiles[TAG_YK_PIVMAN] = new File();
+		final File f = ykFiles[TAG_YK_PIVMAN];
+		f.len = len;
+		if (f.data == null || f.data.length < len)
+			f.data = new byte[len];
+		outgoing.read(f.data, (short)0, len);
+	}
+
 	private void
 	initCHUID()
 	{
@@ -3229,55 +3357,6 @@ public class PivApplet extends Applet
 	}
 
 //#if YKPIV_ATTESTATION
-	private void
-	initAttestation()
-	{
-		final PivSlot atslot = slots[SLOT_F9];
-
-//#if PIV_SUPPORT_EC
-		if (ecdsaSha != null || ecdsaSha256 != null) {
-			atslot.asymAlg = PIV_ALG_ECCP256;
-			final ECPrivateKey ecPriv;
-			final ECPublicKey ecPub;
-			ecPriv = (ECPrivateKey)KeyBuilder.buildKey(
-			    KeyBuilder.TYPE_EC_FP_PRIVATE,
-			    (short)256, false);
-			ecPub = (ECPublicKey)KeyBuilder.buildKey(
-			    KeyBuilder.TYPE_EC_FP_PUBLIC,
-			    (short)256, false);
-			atslot.asym = new KeyPair(
-			    (PublicKey)ecPub, (PrivateKey)ecPriv);
-			ECParams.setCurveParametersP256(ecPriv);
-			ECParams.setCurveParametersP256(ecPub);
-		} else {
-			return;
-		}
-		atslot.asym.genKeyPair();
-		atslot.imported = false;
-
-		try {
-			writeAttestationCert(atslot);
-		} catch (Exception ex) {
-			/* Ignore it, we just won't make a self-signed one */
-			outgoing.reset();
-			incoming.reset();
-			bufmgr.cullNonTransient();
-			return;
-		}
-
-		final short len = outgoing.available();
-		final File file = atslot.cert;
-
-		if (file.data == null || file.data.length < len)
-			file.data = new byte[len];
-		file.len = outgoing.read(file.data, (short)0, len);
-
-		outgoing.reset();
-		incoming.reset();
-		bufmgr.cullNonTransient();
-//#endif
-	}
-
 	private static final byte ASN1_SEQ = (byte)0x30;
 	private static final byte ASN1_SET = (byte)0x31;
 	private static final byte ASN1_INTEGER = (byte)0x02;

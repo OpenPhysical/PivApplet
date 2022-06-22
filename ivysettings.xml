@@ -1,0 +1,16 @@
+<ivysettings>
+  <settings defaultResolver="chained"/>
+  <resolvers>
+    <filesystem name="JDK" local="true">
+      <artifact pattern="${java.home}/lib/[artifact].[type]" />
+      <artifact pattern="${java.home}/../lib/[artifact].[type]" />
+    </filesystem>
+    <chain name="chained">
+      <ibiblio name="javacard.pro" m2compatible="true" root="https://javacard.pro/maven/" />
+      <ibiblio name="central" m2compatible="true"/>
+    </chain>
+  </resolvers>
+  <modules>
+    <module organisation="com.sun" name="tools" resolver="JDK"/>
+  </modules>
+</ivysettings>

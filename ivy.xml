@@ -1,0 +1,16 @@
+<ivy-module version="2.0">
+    <info organisation="net.cooperi" module="pivapplet"/>
+    <dependencies>
+        <dependency org="com.klinec" name="jcardsim" rev="3.0.5.11"/>
+        <dependency org="com.github.martinpaljak" name="ant-javacard" rev="21.12.31"/>
+        <dependency org="org.apache.ant" name="ant-junitlauncher" rev="1.10.12"/>
+        <dependency org="org.junit.platform" name="junit-platform-commons" rev="1.8.2"/>
+        <dependency org="org.junit.platform" name="junit-platform-engine" rev="1.8.2"/>
+        <dependency org="org.junit.platform" name="junit-platform-launcher" rev="1.8.2"/>
+        <dependency org="org.junit.jupiter" name="junit-jupiter-api" rev="5.8.2"/>
+        <dependency org="org.junit.jupiter" name="junit-jupiter-engine" rev="5.8.2"/>
+        <dependency org="org.opentest4j" name="opentest4j" rev="1.2.0"/>
+        <dependency org="com.payneteasy" name="ber-tlv" rev="1.0-11"/>
+        <dependency org="com.sun" name="tools" rev="1.8.0"/>
+    </dependencies>
+</ivy-module>

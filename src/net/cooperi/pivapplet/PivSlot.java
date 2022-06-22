@@ -28,7 +28,7 @@ public class PivSlot {
 	public boolean imported = false;
 	public File cert = null;
 
-	public byte pinPolicy = P_ONCE;
+	public byte pinPolicy = P_DEFAULT;
 
 	public KeyPair asym = null;
 	public byte asymAlg = -1;
