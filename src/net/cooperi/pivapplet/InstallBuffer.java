@@ -21,7 +21,7 @@ public class InstallBuffer implements Readable {
     // How many bytes are available to read?
     @Override
     public short available() {
-        return length < (params.length - bufferOffset) ? length : (short)(params.length - bufferOffset);
+        return length < (short)(params.length - bufferOffset) ? length : (short)(params.length - bufferOffset);
     }
 
     @Override
