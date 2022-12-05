@@ -60,9 +60,6 @@ public class PivApplet extends Applet
 //#if PIV_SUPPORT_ECCP384
 	    'e',
 //#endif
-//#if PIV_USE_EC_PRECOMPHASH
-	    'P',
-//#endif
 //#if PIV_STRICT_CONTACTLESS
 	    'S',
 //#endif
@@ -225,12 +222,6 @@ public class PivApplet extends Applet
 	private static final byte PIV_ALG_AES256 = (byte)0x0C;
 	private static final byte PIV_ALG_ECCP256 = (byte)0x11;
 	private static final byte PIV_ALG_ECCP384 = (byte)0x14;
-
-	private static final byte PIV_ALG_ECCP256_SHA1 = (byte)0xf0;
-	private static final byte PIV_ALG_ECCP256_SHA256 = (byte)0xf1;
-	private static final byte PIV_ALG_ECCP384_SHA1 = (byte)0xf2;
-	private static final byte PIV_ALG_ECCP384_SHA256 = (byte)0xf3;
-	private static final byte PIV_ALG_ECCP384_SHA384 = (byte)0xf4;
 
 	private static final byte GA_TAG_WITNESS = (byte)0x80;
 	private static final byte GA_TAG_CHALLENGE = (byte)0x81;
@@ -789,7 +780,7 @@ public class PivApplet extends Applet
 			case PIV_ALG_ECCP384:
 				ECPublicKey epubk =
 				    (ECPublicKey)slot.asym.getPublic();
-				final short eclen = (short)(epubk.getSize() / 4);
+				final short eclen = (short)(epubk.getSize() / 2);
 
 				wtlv.push((byte)0x04, (short)(eclen + 4));
 				wtlv.push((byte)0x86, (short)(eclen + 1));
@@ -948,19 +939,6 @@ public class PivApplet extends Applet
 		if (ecdsaSha384 != null) {
 			pushAlgorithm(PIV_ALG_ECCP384);
 		}
-/*#if !PIV_USE_EC_PRECOMPHASH
-		if (ecdsaSha != null) {
-			pushAlgorithm(PIV_ALG_ECCP256_SHA1);
-		}
-		if (ecdsaSha256 != null) {
-			pushAlgorithm(PIV_ALG_ECCP256_SHA256);
-		}
-		if (ecdsaSha384 != null) {
-			pushAlgorithm(PIV_ALG_ECCP384_SHA1);
-			pushAlgorithm(PIV_ALG_ECCP384_SHA256);
-			pushAlgorithm(PIV_ALG_ECCP384_SHA384);
-		}
-#endif*/
 //#endif
 
 		wtlv.pop();
@@ -2099,7 +2077,6 @@ public class PivApplet extends Applet
 			return;
 		}
 
-//#if PIV_USE_EC_PRECOMPHASH
 		/* Are they asking for ECDH? */
 		if (tag == GA_TAG_EXP) {
 			final KeyAgreement ag = ecdh;
@@ -2174,12 +2151,6 @@ public class PivApplet extends Applet
 
 		wtlv.end();
 		sendOutgoing(apdu);
-
-/*#else
-		tlv.abort();
-		ISOException.throwIt(ISO7816.SW_FUNC_NOT_SUPPORTED);
-		return;
-#endif*/
 	}
 
 	private void
@@ -2205,125 +2176,6 @@ public class PivApplet extends Applet
 		outBuf.write(cLen);
 
 		incoming.reset();
-		outgoing.reset();
-		wtlv.start(outgoing);
-		outgoingLe = apdu.setOutgoing();
-		wtlv.useApdu((short)0, outgoingLe);
-
-		wtlv.writeTagRealLen((byte)0x7c,
-		    TlvWriter.sizeWithByteTag(cLen));
-		wtlv.writeTagRealLen(GA_TAG_RESPONSE, cLen);
-		wtlv.write(outBuf);
-
-		wtlv.end();
-		sendOutgoing(apdu);
-	}
-
-	private void
-	processGenAuthEcHash(final APDU apdu, final PivSlot slot,
-	    byte alg, final byte key, final Readable input,
-	    final byte wanted, final byte tag)
-	{
-		final byte baseAlg;
-		final Signature si;
-		short cLen;
-
-		switch (alg) {
-		case PIV_ALG_ECCP256_SHA1:
-			si = ecdsaSha;
-			baseAlg = PIV_ALG_ECCP256;
-			break;
-		case PIV_ALG_ECCP256_SHA256:
-			si = ecdsaSha256;
-			baseAlg = PIV_ALG_ECCP256;
-			break;
-		case PIV_ALG_ECCP384_SHA1:
-			si = ecdsaSha;
-			baseAlg = PIV_ALG_ECCP384;
-			break;
-		case PIV_ALG_ECCP384_SHA256:
-			si = ecdsaSha256;
-			baseAlg = PIV_ALG_ECCP384;
-			break;
-		case PIV_ALG_ECCP384_SHA384:
-			si = ecdsaSha384;
-			baseAlg = PIV_ALG_ECCP384;
-			break;
-		default:
-			tlv.abort();
-			ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
-			return;
-		}
-
-		if (slot.asymAlg != baseAlg || slot.asym == null) {
-			tlv.abort();
-			ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
-			return;
-		}
-
-		if (si == null) {
-			tlv.abort();
-			ISOException.throwIt(ISO7816.SW_FUNC_NOT_SUPPORTED);
-			return;
-		}
-
-		/* Are they asking for ECDH? */
-		if (tag == GA_TAG_EXP) {
-			final KeyAgreement ag = ecdhSha;
-			if (ag == null) {
-				tlv.abort();
-				ISOException.throwIt(
-				    ISO7816.SW_FUNC_NOT_SUPPORTED);
-				return;
-			}
-			if (alg != PIV_ALG_ECCP256_SHA1 &&
-			    alg != PIV_ALG_ECCP384_SHA1) {
-				tlv.abort();
-				ISOException.throwIt(
-				    ISO7816.SW_FUNC_NOT_SUPPORTED);
-				return;
-			}
-			processGenAuthEcdh(apdu, slot, ag);
-			return;
-		}
-
-		/* Otherwise they must be asking for a signature. */
-		if (tag != GA_TAG_CHALLENGE) {
-			tlv.abort();
-			ISOException.throwIt(ISO7816.SW_WRONG_DATA);
-			return;
-		}
-
-		final short sLen = tlv.tagLength();
-		cLen = sLen;
-		switch (baseAlg) {
-		case PIV_ALG_ECCP256:
-			cLen = (short)75;
-			break;
-		case PIV_ALG_ECCP384:
-			cLen = (short)107;
-			break;
-		}
-
-		if (!bufmgr.alloc(cLen, outBuf)) {
-			ISOException.throwIt(ISO7816.SW_FILE_FULL);
-			return;
-		}
-
-		si.init(slot.asym.getPrivate(), Signature.MODE_SIGN);
-		short done = (short)0;
-		while (done < sLen) {
-			final short read = tlv.readPartial(tempBuf, sLen);
-			si.update(tempBuf.data(), tempBuf.rpos(), read);
-			done += read;
-		}
-		tlv.end();
-		cLen = si.sign(null, (short)0, (short)0,
-		    outBuf.data(), outBuf.wpos());
-		outBuf.write(cLen);
-
-		incoming.resetAndFree();
-
 		outgoing.reset();
 		wtlv.start(outgoing);
 		outgoingLe = apdu.setOutgoing();
@@ -2492,14 +2344,6 @@ public class PivApplet extends Applet
 			processGenAuthEcPlain(apdu, slot, alg, key, input,
 			    wanted, tag);
 			break;
-		case PIV_ALG_ECCP256_SHA1:
-		case PIV_ALG_ECCP256_SHA256:
-		case PIV_ALG_ECCP384_SHA1:
-		case PIV_ALG_ECCP384_SHA256:
-		case PIV_ALG_ECCP384_SHA384:
-			processGenAuthEcHash(apdu, slot, alg, key, input,
-			    wanted, tag);
-			break;
 //#endif
 		default:
 			tlv.abort();
@@ -2514,6 +2358,7 @@ public class PivApplet extends Applet
 		final byte[] buffer = apdu.getBuffer();
 		short lc, pinOff, idx;
 		final OwnerPIN pin;
+		short sw = (short)0;
 
 		if (buffer[ISO7816.OFFSET_P1] != (byte)0x00 &&
 		    buffer[ISO7816.OFFSET_P1] != (byte)0xFF) {
@@ -2525,11 +2370,8 @@ public class PivApplet extends Applet
 		case (byte)0x80:
 			pin = pivPin;
 			break;
-		case (byte)0x81:
-			pin = pukPin;
-			break;
 		default:
-			ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
+			ISOException.throwIt((short)0x6A88);
 			return;
 		}
 
@@ -2549,13 +2391,35 @@ public class PivApplet extends Applet
 		pinOff = ISO7816.OFFSET_CDATA;
 #endif*/
 
-		if (lc == 0 && pin.isValidated()) {
+		/*
+		 * According to the PIV spec, if the PIN is blocked we should
+		 * return 0x6983 here (SW_FILE_INVALID).
+		 */
+		if (pin.getTriesRemaining() == 0) {
+			ISOException.throwIt(ISO7816.SW_FILE_INVALID);
+			return;
+		}
+
+		/* P1 = FF means "set security status to false" */
+		if (buffer[ISO7816.OFFSET_P1] == (byte)0xFF) {
+			if (pin.isValidated())
+				pin.reset();
+			syncSecurityStatus();
 			ISOException.throwIt(ISO7816.SW_NO_ERROR);
 			return;
-		} else if (lc == 0) {
-			ISOException.throwIt((short)(
-			    (short)0x63C0 | pin.getTriesRemaining()));
-			return;
+		}
+
+		if (lc == 0) {
+			/* P1 = 00 with Lc = 00 and no data: is PIN cached? */
+			if (pin.isValidated()) {
+				ISOException.throwIt(ISO7816.SW_NO_ERROR);
+				return;
+
+			} else {
+				ISOException.throwIt((short)(
+				    (short)0x63C0 | pin.getTriesRemaining()));
+				return;
+			}
 		}
 
 		if (lc != 8) {
@@ -2564,30 +2428,14 @@ public class PivApplet extends Applet
 		}
 
 		if (!pin.check(buffer, pinOff, (byte)8)) {
-			if (pukPin.getTriesRemaining() == 0) {
-				for (idx = (short)0; idx < MAX_SLOTS; ++idx) {
-					final PivSlot slot = slots[idx];
-					if (slot == null)
-						continue;
-					if (slot.asym == null)
-						continue;
-					slot.asym.getPrivate().clearKey();
-				}
-			}
+			eraseKeysIfPukPinBlocked();
+			syncSecurityStatus();
 			ISOException.throwIt((short)(
 			    (short)0x63C0 | pin.getTriesRemaining()));
 			return;
 		}
 
-		for (idx = (short)0; idx < MAX_SLOTS; ++idx) {
-			final PivSlot slot = slots[idx];
-			if (slot == null)
-				continue;
-			if (idx == SLOT_9B)
-				continue;
-			slot.flags[PivSlot.F_UNLOCKED] = true;
-			slot.flags[PivSlot.F_AFTER_VERIFY] = false;
-		}
+		syncSecurityStatus();
 	}
 
 	private void
@@ -2610,7 +2458,7 @@ public class PivApplet extends Applet
 			pin = pukPin;
 			break;
 		default:
-			ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
+			ISOException.throwIt((short)0x6A88);
 			return;
 		}
 
@@ -2635,8 +2483,17 @@ public class PivApplet extends Applet
 			return;
 		}
 
-		if (!pin.isValidated() &&
-		    !pin.check(buffer, oldPinOff, (byte)8)) {
+		/*
+		 * According to the PIV spec, if the PIN is blocked we should
+		 * return 0x6983 here (SW_FILE_INVALID).
+		 */
+		if (pin.getTriesRemaining() == 0) {
+			ISOException.throwIt(ISO7816.SW_FILE_INVALID);
+			return;
+		}
+
+		if (!pin.check(buffer, oldPinOff, (byte)8)) {
+			eraseKeysIfPukPinBlocked();
 			ISOException.throwIt((short)(
 			    (short)0x63C0 | pin.getTriesRemaining()));
 			return;
@@ -2682,7 +2539,10 @@ public class PivApplet extends Applet
 			pin = pivPin;
 			break;
 		default:
-			ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
+			/*
+			 * 800-73-4 part 2 3.2.3
+			 */
+			ISOException.throwIt((short)0x6A88);
 			return;
 		}
 
@@ -2707,8 +2567,17 @@ public class PivApplet extends Applet
 			return;
 		}
 
-		if (!pukPin.isValidated() &&
-		    !pukPin.check(buffer, pukOff, (byte)8)) {
+		/*
+		 * According to the PIV spec, if the PUK is blocked we should
+		 * return 0x6983 here (SW_FILE_INVALID).
+		 */
+		if (pukPin.getTriesRemaining() == 0) {
+			ISOException.throwIt(ISO7816.SW_FILE_INVALID);
+			return;
+		}
+
+		if (!pukPin.check(buffer, pukOff, (byte)8)) {
+			eraseKeysIfPukPinBlocked();
 			ISOException.throwIt((short)(
 			    (short)0x63C0 | pukPin.getTriesRemaining()));
 			return;
@@ -2817,9 +2686,6 @@ public class PivApplet extends Applet
 
 		randData.generateData(cardId, (short)CARD_ID_FIXED.length,
 		    (short)(21 - (short)CARD_ID_FIXED.length));
-
-		randData.generateData(serial, (short)0, (short)4);
-		serial[0] |= (byte)0x80;
 
 		/*
 		 * These can be changed during generate or import, so reset
@@ -3023,8 +2889,7 @@ public class PivApplet extends Applet
 			tlv.end();
 			tlv.finish();
 
-			if (file == null || file.data == null ||
-			    file.len == 0) {
+			if (file == null) {
 				ISOException.throwIt(ISO7816.SW_FILE_NOT_FOUND);
 				return;
 			}
@@ -3044,6 +2909,11 @@ public class PivApplet extends Applet
 			if (policy == File.P_PIN && !pivPin.isValidated()) {
 				ISOException.throwIt(
 				    ISO7816.SW_SECURITY_STATUS_NOT_SATISFIED);
+				return;
+			}
+
+			if (file.data == null || file.len == 0) {
+				ISOException.throwIt(ISO7816.SW_FILE_NOT_FOUND);
 				return;
 			}
 
@@ -3091,6 +2961,44 @@ public class PivApplet extends Applet
 		wtlv.pop();
 		wtlv.end();
 		sendOutgoing(apdu);
+	}
+
+	private void
+	syncSecurityStatus()
+	{
+		short idx;
+
+		for (idx = (short)0; idx < MAX_SLOTS; ++idx) {
+			final PivSlot slot = slots[idx];
+			if (slot == null)
+				continue;
+			if (idx == SLOT_9B)
+				continue;
+			slot.flags[PivSlot.F_UNLOCKED] = pivPin.isValidated();
+			slot.flags[PivSlot.F_AFTER_VERIFY] = false;
+		}
+	}
+
+	private void
+	eraseKeysIfPukPinBlocked()
+	{
+		short idx;
+
+		if (pivPin.isValidated() || pukPin.isValidated())
+			return;
+		if (pivPin.getTriesRemaining() > (byte)0)
+			return;
+		if (pukPin.getTriesRemaining() > (byte)0)
+			return;
+
+		for (idx = (short)0; idx < MAX_SLOTS; ++idx) {
+			final PivSlot slot = slots[idx];
+			if (slot == null)
+				continue;
+			if (slot.asym == null)
+				continue;
+			slot.asym.getPrivate().clearKey();
+		}
 	}
 
 	private void
